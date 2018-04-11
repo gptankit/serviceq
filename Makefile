@@ -13,7 +13,14 @@ build:
 	$(GOBUILD) -o $(BINARY_NAME) -v
 
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) -v ./... #run tests (TestXxx) excluding benchmarks
+
+bench:
+	$(GOTEST) -v -run=XXX -bench=. ./... #run all benchmarks (BenchmarkXxx)
+
+test-bench:
+	$(GOTEST) -v -bench=. ./... #run all tests and benchmarks (TestXxx and Benchmark)
+
 clean: 
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
