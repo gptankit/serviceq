@@ -25,6 +25,15 @@ clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_UNIX)
+
+install:
+	if [ ! -d /opt/serviceq ] ; then \
+		sudo mkdir /opt/serviceq; \
+		sudo mkdir /opt/serviceq/config; \
+	fi
+	sudo cp serviceq /opt/serviceq/
+	sudo cp sq.properties /opt/serviceq/config
+
 run:
 	$(GOBUILD) -o $(BINARY_NAME) -v
 	./$(BINARY_NAME)
