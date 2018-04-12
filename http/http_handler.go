@@ -67,9 +67,11 @@ func dialAndSendRequest(request *http.Request, sqprops *model.ServiceQProperties
 
 	// saving body
 	var body io.ReadCloser
-	bodyBuff, _ := ioutil.ReadAll(request.Body)
-	if len(bodyBuff) > 0 {
-		body = ioutil.NopCloser(bytes.NewReader(bodyBuff))
+	if request.Body != nil {
+		bodyBuff, _ := ioutil.ReadAll(request.Body)
+		if len(bodyBuff) > 0 {
+			body = ioutil.NopCloser(bytes.NewReader(bodyBuff))
+		}
 	}
 
 	// saving headers, if available
