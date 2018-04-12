@@ -1,0 +1,3 @@
+[submodule "github.com/pkg/profile"]
+	path = github.com/pkg/profile
+	url = https://github.com/pkg/profile
