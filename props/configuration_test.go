@@ -1,8 +1,8 @@
 package props
 
-import(
-	"testing"
+import (
 	"model"
+	"testing"
 )
 
 type Properties struct {
@@ -18,7 +18,7 @@ func TestReadConfiguration(t *testing.T) {
 	cfPath := rd + "sq.properties"
 	cfg, err := GetConfiguration(cfPath)
 
-	props = Properties{c : cfg, e : err}
+	props = Properties{c: cfg, e: err}
 	if err != nil {
 		t.Error(err.Error())
 	}

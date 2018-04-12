@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	sqhttp "http"
-	"profiling"
 	"model"
 	"net"
 	"net/http"
 	"os"
+	"profiling"
 	"props"
 	"time"
 )
@@ -93,4 +93,3 @@ func assignSQProps(sqprops *model.ServiceQProperties, config model.Config) {
 	(*sqprops).RequestErrorLog = make(map[string]int, len(config.Endpoints))
 	(*sqprops).OutReqTimeout = config.OutReqTimeout
 }
-
