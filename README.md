@@ -1,6 +1,6 @@
 <h2>ServiceQ</h2>
 
-ServiceQ is a TCP layer for parallel service deployments. It distributes load across multiple endpoints and buffer requests on error (in scenarios of downtimes, service unavailability, connection loss etc). The buffered requests are forwarded in-order when the service is available next.
+ServiceQ is a TCP layer for parallel HTTP service deployments. It distributes load across multiple endpoints and buffer requests on error (in scenarios of downtimes, service unavailability, connection loss etc). The buffered requests are forwarded in FIFO order when the service is available next.
 
 Noticeable features -
 
@@ -36,11 +36,11 @@ Make sure the current user has root privileges, then - </br>
 
 <pre>$ make install</pre>
 
-This will create a folder <i>serviceq</i> in /opt directory and copy <i>serviceq</i> binary (to <i>/opt/serviceq</i>) and <i>sq.properties</i> (load balancer configuration) file (to <i>/opt/serviceq/config</i>).<br/>
+This will create a folder <i>serviceq</i> in <i>/opt</i> directory and copy the generated <i>serviceq</i> binary to <i>/opt/serviceq</i> and <i>sq.properties</i> file (load balancer configuration) to <i>/opt/serviceq/config</i>.<br/>
 
 <b>How to Run</b>
 
-Before installing, make sure the mandatory configurations in sq.properties are set (<b>LISTENER_POST</b>, <b>PROTO</b>, <b>ENDPOINTS</b>, <b>CONCURRENCY_PEAK</b>) -</br>
+Before installing, make sure the mandatory configurations in <i>sq.properties</i> are set (<b>LISTENER_PORT</b>, <b>PROTO</b>, <b>ENDPOINTS</b>, <b>CONCURRENCY_PEAK</b>) -</br>
 
 <pre>
 #sq.properties
