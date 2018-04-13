@@ -7,6 +7,7 @@ type Config struct {
 	CustomRequestHeaders  []string
 	CustomResponseHeaders []string
 	ConcurrencyPeak       int64
+	RetryGap              int
 	OutReqTimeout         int32
 	EnableProfilingFor    string
 }
