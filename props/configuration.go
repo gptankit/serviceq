@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	SQP_K_LISTENER_PORT        = "LISTENER_PORT"
 	SQP_K_PROTOCOL             = "PROTO"
 	SQP_K_ENDPOINTS            = "ENDPOINTS"
 	SQP_K_REQUEST_HEADERS      = "CUSTOM_REQUEST_HEADERS"
@@ -40,7 +41,9 @@ func GetConfiguration(confFilePath string) (model.Config, error) {
 					sline := string(line)
 					kvpart := strings.Split(sline, "=")
 					if kvpart != nil {
-						if kvpart[0] == SQP_K_PROTOCOL {
+						if kvpart[0] == SQP_K_LISTENER_PORT {
+							config.ListenerPort = kvpart[1]
+						} else if kvpart[0] == SQP_K_PROTOCOL {
 							config.Proto = kvpart[1]
 						} else if kvpart[0] == SQP_K_ENDPOINTS {
 							vpart := strings.Split(kvpart[1], ",")

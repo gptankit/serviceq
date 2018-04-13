@@ -14,20 +14,18 @@ import (
 
 func main() {
 
-	if listen, err := net.Listen("tcp", "localhost:8008"); err == nil {
+	var sqprops model.ServiceQProperties
+	sqwd := "/opt/serviceq"
+	confFilePath := sqwd + "/config/sq.properties"
 
-		defer listen.Close()
+	if config, err := props.GetConfiguration(confFilePath); err == nil {
+		assignSQProps(&sqprops, config)
 
-		var sqprops model.ServiceQProperties
-		sqwd := "/opt/serviceq"
-		confFilePath := sqwd + "/config/sq.properties"
-
-		if config, err := props.GetConfiguration(confFilePath); err == nil {
+		if listen, err := net.Listen("tcp", "localhost:"+sqprops.ListenerPort); err == nil {
+			defer listen.Close()
 
 			// config.EnableProfilingFor should be "" in production, controlled in sq.properties
 			profiling.Start(config.EnableProfilingFor)
-
-			assignSQProps(&sqprops, config)
 
 			if len(sqprops.ServiceList) > 0 {
 
@@ -53,8 +51,10 @@ func main() {
 				fmt.Fprintf(os.Stderr, "No services listed, closing listener\n")
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "Could not listen to localhost:"+sqprops.ListenerPort+" -- %s\n", err.Error())
 		}
+	} else {
+		fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
 	}
 }
 
@@ -82,6 +82,7 @@ func orchestrate(cconn chan *net.Conn, creq chan interface{}, cwork chan int, sq
 
 func assignSQProps(sqprops *model.ServiceQProperties, config model.Config) {
 
+	(*sqprops).ListenerPort = config.ListenerPort
 	(*sqprops).Proto = config.Proto
 	(*sqprops).ServiceList = config.Endpoints
 	(*sqprops).CustomRequestHeaders = config.CustomRequestHeaders

@@ -13,12 +13,13 @@ func TestOrchestrationStates(t *testing.T) {
 	// assumption -- all services are down
 
 	sqp := model.ServiceQProperties{}
+	sqp.ListenerPort = "5252"
 	sqp.Proto = "http"
 	sqp.ServiceList = []string{"http://example.org:2001", "http://example.org:3001", "http://example.org:4001", "http://example.org:5001"}
 	sqp.MaxConcurrency = 8 // if changing, do check value of duplicateWork
-	sqp.MaxRetries = 1      // we know it's down
-	sqp.RetryGap = 1000     // ms
-	sqp.IdleGap = 500       // ms
+	sqp.MaxRetries = 1     // we know it's down
+	sqp.RetryGap = 1000    // ms
+	sqp.IdleGap = 500      // ms
 	sqp.RequestErrorLog = make(map[string]int, 2)
 	sqp.OutReqTimeout = 500
 

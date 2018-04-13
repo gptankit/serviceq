@@ -5,6 +5,7 @@ import (
 )
 
 type ServiceQProperties struct {
+	ListenerPort          string
 	Proto                 string
 	ServiceList           []string
 	CustomRequestHeaders  []string

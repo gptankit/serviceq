@@ -1,6 +1,7 @@
 package model
 
 type Config struct {
+	ListenerPort          string
 	Proto                 string
 	Endpoints             []string
 	CustomRequestHeaders  []string

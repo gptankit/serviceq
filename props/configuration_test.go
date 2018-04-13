@@ -27,6 +27,9 @@ func TestReadConfiguration(t *testing.T) {
 func TestMandatoryProperties(t *testing.T) {
 
 	if props.e == nil {
+		if props.c.ListenerPort == "" {
+			t.Error("LISTENER_PORT missing in sq.properties\n")
+		}
 		if props.c.Proto == "" {
 			t.Error("PROTO missing in sq.properties\n")
 		}

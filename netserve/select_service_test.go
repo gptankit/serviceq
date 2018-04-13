@@ -1,13 +1,13 @@
 package netserve
 
-import(
-	"testing"
+import (
 	"math"
+	"testing"
 )
 
 func TestServiceIndexWithinBoundR1(t *testing.T) {
 
-	var params = []struct{
+	var params = []struct {
 		ns int
 		ic int
 		rt int
@@ -31,7 +31,7 @@ func TestServiceIndexWithinBoundR1(t *testing.T) {
 
 func TestServiceIndexWithinBoundRn(t *testing.T) {
 
-	var params = []struct{
+	var params = []struct {
 		ns int
 		ic int
 		rt int
@@ -56,7 +56,7 @@ func TestServiceIndexWithinBoundRn(t *testing.T) {
 
 func TestServiceIndexCorrectnessRn(t *testing.T) {
 
-	var params = []struct{
+	var params = []struct {
 		ns int
 		ic int
 		rt int

@@ -1,11 +1,11 @@
 package profiling
 
-import(
-	"github.com/pkg/profile"
-	"os/signal"
-	"os"
-	"syscall"
+import (
 	"fmt"
+	"github.com/pkg/profile"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func Start(profilingFor string) {
@@ -29,13 +29,13 @@ func hookInterrupt(csig chan os.Signal, prof interface{}) {
 		s := <-csig
 		switch s {
 		case syscall.SIGQUIT: // ctrl + \
-			fmt.Println("stop and core dump")
+			fmt.Printf("Stop and core dump\n")
 			if prof != nil {
 				prof.(*profile.Profile).Stop() // write profile to disk
 			}
 			os.Exit(0)
 		default:
-			fmt.Println("Unknown signal.")
+			fmt.Printf("Unknown signal\n")
 		}
 	}
 }
