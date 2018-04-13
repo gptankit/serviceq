@@ -2,13 +2,12 @@ package main
 
 import (
 	"model"
-	"net"
 	"net/http"
 	"testing"
 	"time"
 )
 
-func TestOrchestrationStates(t *testing.T) {
+func TestWorkAssigment(t *testing.T) {
 
 	// assumption -- all services are down
 
@@ -24,7 +23,6 @@ func TestOrchestrationStates(t *testing.T) {
 	sqp.OutReqTimeout = 500
 
 	cw := make(chan int, sqp.MaxConcurrency)
-	cc := make(chan *net.Conn, sqp.MaxConcurrency)
 	cr := make(chan interface{}, sqp.MaxConcurrency)
 
 	req, _ := http.NewRequest("GET", "http://example.org:1001", nil)
@@ -32,7 +30,7 @@ func TestOrchestrationStates(t *testing.T) {
 	cr <- req
 	cw <- 1
 
-	go orchestrate(cc, cr, cw, &sqp) // this will start executing req
+	go workBackground(cr, cw, &sqp) // this will start executing req
 
 	// increment/decrement buffer (+1/-1) in creq, cwork and give time to orchestrate
 

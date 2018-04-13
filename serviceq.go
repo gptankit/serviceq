@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"profiling"
+	_ "profiling"
 	"props"
 	"time"
 )
@@ -15,38 +15,27 @@ import (
 func main() {
 
 	var sqprops model.ServiceQProperties
-	sqwd := "/opt/serviceq"
-	confFilePath := sqwd + "/config/sq.properties"
+	confFile := props.GetConfFileLocation()
 
-	if config, err := props.GetConfiguration(confFilePath); err == nil {
-		assignSQProps(&sqprops, config)
+	if config, err := props.GetConfiguration(confFile); err == nil {
+		assignProperties(&sqprops, config)
 
-		if listen, err := net.Listen("tcp", "localhost:"+sqprops.ListenerPort); err == nil {
-			defer listen.Close()
+		if listener, err := net.Listen("tcp", "localhost:"+sqprops.ListenerPort); err == nil {
+			defer listener.Close()
 
-			// config.EnableProfilingFor should be "" in production, controlled in sq.properties
-			profiling.Start(config.EnableProfilingFor)
+			// uncomment if profiling is needed in dev env, controlled in sq.properties
+			// profiling.Start(config.EnableProfilingFor)
 
 			if len(sqprops.ServiceList) > 0 {
 
 				cwork := make(chan int, sqprops.MaxConcurrency)        // work done queue
-				cconn := make(chan *net.Conn, sqprops.MaxConcurrency)  // connection queue
 				creq := make(chan interface{}, sqprops.MaxConcurrency) // request queue
 
-				// observe connections
-				go orchestrate(cconn, creq, cwork, &sqprops)
+				// observe bufferred requests
+				go workBackground(creq, cwork, &sqprops)
 
-				// handle connection events in a loop
-				for {
-					if conn, err := listen.Accept(); err == nil {
-						if len(cwork) < cap(cwork) {
-							cwork <- 1
-							cconn <- (&conn)
-						} else {
-							conn.Close()
-						}
-					}
-				}
+				// accept new connections
+				listenActive(listener, creq, cwork, &sqprops)
 			} else {
 				fmt.Fprintf(os.Stderr, "No services listed, closing listener\n")
 			}
@@ -58,29 +47,39 @@ func main() {
 	}
 }
 
-func orchestrate(cconn chan *net.Conn, creq chan interface{}, cwork chan int, sqprops *model.ServiceQProperties) {
+func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, sqprops *model.ServiceQProperties) {
 
 	for {
-		if len(cwork) > 0 && len(creq) > 0 { // handle bufferred requests
-			if (*sqprops).Proto == "http" {
-				go sqhttp.HandleBufferedReader((<-creq).(*http.Request), creq, cwork, sqprops)
+		if conn, err := listener.Accept(); err == nil {
+			if len(cwork) < cap(cwork) {
+				cwork <- 1
+				if (*sqprops).Proto == "http" {
+					go sqhttp.HandleConnection(&conn, creq, cwork, sqprops)
+				} else {
+					<-cwork
+					conn.Close()
+				}
 			} else {
-				// handle other protocols
+				conn.Close() // refuse connection
 			}
-		} else if len(cwork) > 0 && len(cconn) > 0 { // handle active requests
-			if (*sqprops).Proto == "http" {
-				go sqhttp.HandleConnection(<-cconn, creq, cwork, sqprops)
-			} else {
-				// handle other protocols
-			}
-		} else {
-			// wait for new work
-			time.Sleep(time.Duration((*sqprops).IdleGap) * time.Millisecond)
 		}
 	}
 }
 
-func assignSQProps(sqprops *model.ServiceQProperties, config model.Config) {
+func workBackground(creq chan interface{}, cwork chan int, sqprops *model.ServiceQProperties) {
+
+	for {
+		if len(cwork) > 0 && len(creq) > 0 {
+			if (*sqprops).Proto == "http" {
+				go sqhttp.HandleBufferedReader((<-creq).(*http.Request), creq, cwork, sqprops)
+			}
+		} else {
+			time.Sleep(time.Duration((*sqprops).IdleGap) * time.Millisecond) // wait for more work
+		}
+	}
+}
+
+func assignProperties(sqprops *model.ServiceQProperties, config model.Config) {
 
 	(*sqprops).ListenerPort = config.ListenerPort
 	(*sqprops).Proto = config.Proto

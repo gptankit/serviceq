@@ -83,3 +83,9 @@ func GetConfiguration(confFilePath string) (model.Config, error) {
 
 	return config, nil
 }
+
+func GetConfFileLocation() string {
+
+	sqwd := "/opt/serviceq"
+	return sqwd + "/config/sq.properties"
+}
