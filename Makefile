@@ -16,15 +16,15 @@ build:
 	@echo 'done'
 
 test:
-	$(GOTEST) -v ./... #run tests (TestXxx) excluding benchmarks
+	$(GOTEST) -v -race ./... #run tests (TestXxx) excluding benchmarks
 	@echo 'done'
 
 bench:
-	$(GOTEST) -v -run=XXX -bench=. ./... #run all benchmarks (BenchmarkXxx)
+	$(GOTEST) -v -race -run=XXX -bench=. ./... #run all benchmarks (BenchmarkXxx)
 	@echo 'done'
 
 test-bench:
-	$(GOTEST) -v -bench=. ./... #run all tests and benchmarks (TestXxx and BenchmarkXxx)
+	$(GOTEST) -v -race -bench=. ./... #run all tests and benchmarks (TestXxx and BenchmarkXxx)
 	@echo 'done'
 
 clean: 
