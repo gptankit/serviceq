@@ -2,7 +2,6 @@ package main
 
 import (
 	"model"
-	"net/http"
 	"testing"
 	"time"
 )
@@ -25,9 +24,15 @@ func TestWorkAssigment(t *testing.T) {
 	cw := make(chan int, sqp.MaxConcurrency)
 	cr := make(chan interface{}, sqp.MaxConcurrency)
 
-	req, _ := http.NewRequest("GET", "http://example.org:1001", nil)
+	var reqParam model.RequestParam
+	reqParam.Protocol = "HTTP/1.1"
+	reqParam.Method = "GET"
+	reqParam.RequestURI = "/getRefund"
+	reqParam.Headers = make(map[string][]string, 1)
+	reqParam.Headers["Content-Type"] = []string{"application/json"}
+	reqParam.BodyBuff = nil
 
-	cr <- req
+	cr <- reqParam
 	cw <- 1
 
 	go workBackground(cr, cw, &sqp) // this will start executing req
@@ -39,7 +44,7 @@ func TestWorkAssigment(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 	// add req and work again
 	for i := 0; i < duplicateWork; i++ {
-		cr <- req
+		cr <- reqParam
 		cw <- 1
 	}
 

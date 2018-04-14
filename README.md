@@ -5,13 +5,12 @@ ServiceQ is a TCP layer for parallel HTTP service deployments. It distributes lo
 Noticeable features -
 
 * HTTP Load Balancing<br/>
+* Randomized + Round Robin selection<br/>
 * Request retries with configurable interval<br/>
 * Failed request buffering and deferred forwarding<br/>
 * Concurrent connections limit<br/> 
-* Add timeout to client requests
-* Add headers to upstream responses
 * Customizable balancer properties<br/>
-* Error detection<br/>
+* Error based response<br/>
 
 Until I make <b>serviceq</b> available as a package download, here are the steps to run the setup - </br>
 

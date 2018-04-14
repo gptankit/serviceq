@@ -5,7 +5,6 @@ import (
 	sqhttp "http"
 	"model"
 	"net"
-	"net/http"
 	"os"
 	_ "profiling"
 	"props"
@@ -71,7 +70,7 @@ func workBackground(creq chan interface{}, cwork chan int, sqprops *model.Servic
 	for {
 		if len(cwork) > 0 && len(creq) > 0 {
 			if (*sqprops).Proto == "http" {
-				go sqhttp.HandleBufferedReader((<-creq).(*http.Request), creq, cwork, sqprops)
+				go sqhttp.HandleBufferedReader((<-creq).(model.RequestParam), creq, cwork, sqprops)
 			}
 		} else {
 			time.Sleep(time.Duration((*sqprops).IdleGap) * time.Millisecond) // wait for more work

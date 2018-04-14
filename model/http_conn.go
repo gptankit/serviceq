@@ -22,6 +22,7 @@ func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 
 	reader := bufio.NewReader(*httpConn.tcpConn)
 	req, err := http.ReadRequest(reader)
+
 	if err == nil {
 		return req, nil
 	}
@@ -33,28 +34,37 @@ func (httpConn *HTTPConnection) WriteTo(resp *http.Response, customHeaders []str
 
 	writer := bufio.NewWriter(*httpConn.tcpConn)
 
-	defer resp.Body.Close()
-	responseBody, _ := ioutil.ReadAll(resp.Body)
+	var responseBody []byte
+	if resp.Body != nil {
+		responseBody, _ = ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+	}
+
 	responseProtocol := resp.Proto
 	responseHeaders := ""
 	responseStatus := resp.Status
+
 	// add original response headers
 	if resp.Header != nil {
 		for k, v := range resp.Header {
 			responseHeaders += k + ": " + strings.Join(v, ",") + "\n"
 		}
 	}
+
 	// add user custom headers
 	if customHeaders != nil {
 		for _, h := range customHeaders {
 			responseHeaders += h + "\n"
 		}
 	}
+
 	if responseHeaders != "" {
 		responseHeaders = responseHeaders[:len(responseHeaders)-1]
 		responseStatus = responseStatus + "\n"
 	}
+
 	responseStr := responseProtocol + " " + responseStatus + responseHeaders + "\n\n" + string(responseBody)
+
 	response := []byte(responseStr)
 
 	_, err := writer.Write(response) // tunneling onto tcp conn writer
