@@ -14,10 +14,10 @@ func TestWorkAssigment(t *testing.T) {
 	sqp.ListenerPort = "5252"
 	sqp.Proto = "http"
 	sqp.ServiceList = []model.Endpoint{
-		{RawUrl : "http://example.org:2001", Scheme : "http", QualifiedUrl : "http://example.org:2001", Host : "example.org:2001"},
-		{RawUrl : "http://example.org:3001", Scheme : "http", QualifiedUrl : "http://example.org:3001", Host : "example.org:3001"},
-		{RawUrl : "http://example.org:4001", Scheme : "http", QualifiedUrl : "http://example.org:4001", Host : "example.org:4001"},
-		{RawUrl : "http://example.org:5001", Scheme : "http", QualifiedUrl : "http://example.org:5001", Host : "example.org:5001"},
+		{RawUrl: "http://example.org:2001", Scheme: "http", QualifiedUrl: "http://example.org:2001", Host: "example.org:2001"},
+		{RawUrl: "http://example.org:3001", Scheme: "http", QualifiedUrl: "http://example.org:3001", Host: "example.org:3001"},
+		{RawUrl: "http://example.org:4001", Scheme: "http", QualifiedUrl: "http://example.org:4001", Host: "example.org:4001"},
+		{RawUrl: "http://example.org:5001", Scheme: "http", QualifiedUrl: "http://example.org:5001", Host: "example.org:5001"},
 	}
 	sqp.MaxConcurrency = 8 // if changing, do check value of duplicateWork
 	sqp.MaxRetries = 1     // we know it's down
