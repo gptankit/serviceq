@@ -15,6 +15,10 @@ build:
 	$(GOBUILD) -o $(BINARY_NAME) -v
 	@echo 'done'
 
+build-nodbg:
+	$(GOBUILD) -o $(BINARY_NAME) -v -ldflags="-s -w"
+	@echo 'done'
+
 test:
 	$(GOTEST) -v -race ./... #run tests (TestXxx) excluding benchmarks
 	@echo 'done'
