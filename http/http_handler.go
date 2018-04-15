@@ -105,19 +105,19 @@ func dialAndSend(reqParam model.RequestParam, sqprops *model.ServiceQProperties)
 		choice = netserve.ChooseServiceIndex(noOfServices, choice, retry)
 		dstService := (*sqprops).ServiceList[choice]
 
-		fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), dstService)
+		fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), dstService.Host)
 		// ping ip
-		if !netserve.IsTCPAlive(dstService) {
-			errorlog.IncrementErrorCount(sqprops, dstService)
+		if !netserve.IsTCPAlive(dstService.Host) {
+			errorlog.IncrementErrorCount(sqprops, dstService.QualifiedUrl)
 			time.Sleep(time.Duration((*sqprops).RetryGap) * time.Millisecond) // wait on error
 			clientErr = errors.New(RESPONSE_SERVICE_DOWN)
 			continue
 		}
 
-		fmt.Printf("->Forwarding to %s\n", dstService)
+		fmt.Printf("->Forwarding to %s\n", dstService.QualifiedUrl)
 
 		body := ioutil.NopCloser(bytes.NewReader(reqParam.BodyBuff))
-		newRequest, _ := http.NewRequest(reqParam.Method, dstService+reqParam.RequestURI, body)
+		newRequest, _ := http.NewRequest(reqParam.Method, dstService.QualifiedUrl+reqParam.RequestURI, body)
 		newRequest.Header = reqParam.Headers
 
 		// do http call
@@ -126,7 +126,7 @@ func dialAndSend(reqParam model.RequestParam, sqprops *model.ServiceQProperties)
 
 		// handle response
 		if resp == nil || err != nil {
-			go errorlog.IncrementErrorCount(sqprops, dstService)
+			go errorlog.IncrementErrorCount(sqprops, dstService.QualifiedUrl)
 			time.Sleep(time.Duration((*sqprops).RetryGap) * time.Millisecond) // wait on error
 			clientErr = err
 			if clientErr != nil {
@@ -140,7 +140,7 @@ func dialAndSend(reqParam model.RequestParam, sqprops *model.ServiceQProperties)
 			}
 			break
 		} else {
-			go errorlog.ResetErrorCount(sqprops, dstService)
+			go errorlog.ResetErrorCount(sqprops, dstService.QualifiedUrl)
 			clientErr = nil
 			return resp, false, nil
 		}

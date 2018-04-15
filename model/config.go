@@ -3,7 +3,7 @@ package model
 type Config struct {
 	ListenerPort          string
 	Proto                 string
-	Endpoints             []string
+	Endpoints             []Endpoint
 	CustomRequestHeaders  []string
 	CustomResponseHeaders []string
 	ConcurrencyPeak       int64

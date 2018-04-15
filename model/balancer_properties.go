@@ -7,7 +7,7 @@ import (
 type ServiceQProperties struct {
 	ListenerPort          string
 	Proto                 string
-	ServiceList           []string
+	ServiceList           []Endpoint
 	CustomRequestHeaders  []string
 	CustomResponseHeaders []string
 	MaxConcurrency        int64

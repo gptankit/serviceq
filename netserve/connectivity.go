@@ -3,7 +3,6 @@ package netserve
 import (
 	"fmt"
 	"net"
-	"net/url"
 	"os"
 	"time"
 )
@@ -11,14 +10,7 @@ import (
 func IsTCPAlive(service string) bool {
 
 	dialTimeout := 1000
-	uri, err := url.ParseRequestURI(service)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "->Not a valid url\n")
-		return false
-	}
-
-	hostport := uri.Host
-	conn, err := net.DialTimeout("tcp", hostport, time.Duration(dialTimeout)*time.Millisecond)
+	conn, err := net.DialTimeout("tcp", service, time.Duration(dialTimeout)*time.Millisecond)
 	if err == nil {
 		conn.Close()
 		return true

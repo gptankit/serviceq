@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"net/url"
 )
 
 const (
@@ -49,10 +50,26 @@ func GetConfiguration(confFilePath string) (model.Config, error) {
 						} else if kvpart[0] == SQP_K_ENDPOINTS {
 							vpart := strings.Split(kvpart[1], ",")
 							for _, s := range vpart {
-								if s != "" {
-									config.Endpoints = append(config.Endpoints, s)
-									fmt.Printf("Service Addr> %s\n", s)
+								uri, err := url.ParseRequestURI(s)
+								if err != nil || (uri.Scheme != "http" && uri.Scheme != "https") {
+									fmt.Fprintf(os.Stderr, "Invalid endpoint.. exiting\n")
+									os.Exit(1)
 								}
+								var endpoint model.Endpoint
+								port := ""
+								endpoint.RawUrl = s
+								endpoint.Scheme = uri.Scheme
+								if !strings.Contains(uri.Host, ":") {
+									if uri.Scheme == "http" {
+										port = ":80"
+									} else if uri.Scheme == "https" {
+										port = ":443"
+									}
+								}
+								endpoint.QualifiedUrl = s + port
+								endpoint.Host = uri.Host + port
+								config.Endpoints = append(config.Endpoints, endpoint)
+								fmt.Printf("Service Addr> %s\n", endpoint.QualifiedUrl)
 							}
 						} else if kvpart[0] == SQP_K_MAX_CONCURRENT_CONNS {
 							config.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
