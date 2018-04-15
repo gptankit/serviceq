@@ -27,6 +27,10 @@ Change into directory <i>serviceq/src</i><br/>
 
 <pre>$ make ('make build' will also work)</pre>
 
+Optional: <i>make</i> with debug symbols removed (~25% size reduction)
+
+<pre>$ make build-nodbg</pre>
+
 This will create a Go binary <i>serviceq</i> in the current directory
 
 <b>How to Install</b>
@@ -47,11 +51,11 @@ Before installing, make sure the mandatory configurations in <i>sq.properties</i
 #Port on which serviceq listens on
 LISTENER_PORT=5252
 
-#Protocol the endpoints accept, http and https are handled differently
+#Protocol the endpoints listens on -- 'http' for both http/https
 PROTO=http
 
-#Endpoints seperated by comma (,) -- no spaces allowed
-ENDPOINTS=http://api.server0.com:8000,http://api.server1.com:8001,http://api.server2.com:8002
+#Endpoints seperated by comma (,) -- no spaces allowed, can be a combination of http/https
+ENDPOINTS=https://api.server0.com:8000,https://api.server1.com:8001,https://api.server2.com:8002
 
 #Concurrency peak defines how many max concurrent connections are allowed to the cluster
 CONCURRENCY_PEAK=2048
