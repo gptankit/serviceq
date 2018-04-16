@@ -61,6 +61,17 @@ ENDPOINTS=https://api.server0.com:8000,https://api.server1.com:8001,https://api.
 CONCURRENCY_PEAK=2048
 </pre>
 
+By default deferred queue is enabled with all methods and routes allowed. These options can be controlled as -</br>
+
+<pre>
+#Enable deferred queue for requests on final failures (cluster down)
+ENABLE_DEFERRED_Q=true
+
+#Request format allows given method/route on deferred queue -- picked up if ENABLE_DEFERRED_Q is true
+#DEFERRED_Q_REQUEST_FORMATS=POST /orders,PUT,PATCH,DELETE
+DEFERRED_Q_REQUEST_FORMATS=ALL
+</pre>
+
 After all is set - </br>
 
 <pre>$ /opt/serviceq/serviceq</pre>
