@@ -22,9 +22,9 @@ func TestWorkAssigment(t *testing.T) {
 	sqp.MaxConcurrency = 8 // if changing, do check value of duplicateWork
 	sqp.EnableDeferredQ = true
 	sqp.DeferredQRequestFormats = []string{"ALL"}
-	sqp.MaxRetries = 1  // we know it's down
-	sqp.RetryGap = 0 // ms
-	sqp.IdleGap = 500   // ms
+	sqp.MaxRetries = 1 // we know it's down
+	sqp.RetryGap = 0   // ms
+	sqp.IdleGap = 500  // ms
 	sqp.RequestErrorLog = make(map[string]int, 2)
 	sqp.OutRequestTimeout = 300000
 

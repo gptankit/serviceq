@@ -60,7 +60,7 @@ func HandleBufferedReader(reqParam model.RequestParam, creq chan interface{}, cw
 
 	_, toBuffer, _ := dialAndSend(reqParam, sqprops)
 
-	if toBuffer && canBeBuffered(reqParam, sqprops) {
+	if toBuffer {
 		creq <- reqParam
 		cwork <- 1
 		fmt.Printf("Request bufferred\n")
@@ -112,11 +112,13 @@ func canBeBuffered(reqParam model.RequestParam, sqprops *model.ServiceQPropertie
 				satisfy = true
 				if (1 < len(rfBrkUp) && reqParam.RequestURI == rfBrkUp[1]) || (1 >= len(rfBrkUp)) {
 					satisfy = true
+					if 2 < len(rfBrkUp) && rfBrkUp[2] == "!" {
+						satisfy = false
+					}
 				} else {
 					satisfy = false
 				}
 			}
-
 			if satisfy {
 				return satisfy
 			}
