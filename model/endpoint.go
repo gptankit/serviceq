@@ -1,9 +1,8 @@
 package model
 
 type Endpoint struct {
-
-	RawUrl string
-	Scheme string
+	RawUrl       string
+	Scheme       string
 	QualifiedUrl string
-	Host string
+	Host         string
 }

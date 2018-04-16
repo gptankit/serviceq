@@ -12,6 +12,7 @@ import (
 	"netserve"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -43,7 +44,7 @@ func HandleConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp
 		}
 	}
 
-	if toBuffer {
+	if toBuffer && canBeBuffered(reqParam, sqprops) {
 		creq <- reqParam
 		cwork <- 1
 		fmt.Printf("Request bufferred\n")
@@ -59,7 +60,7 @@ func HandleBufferedReader(reqParam model.RequestParam, creq chan interface{}, cw
 
 	_, toBuffer, _ := dialAndSend(reqParam, sqprops)
 
-	if toBuffer {
+	if toBuffer && canBeBuffered(reqParam, sqprops) {
 		creq <- reqParam
 		cwork <- 1
 		fmt.Printf("Request bufferred\n")
@@ -94,6 +95,37 @@ func saveReqParam(request *http.Request) model.RequestParam {
 	return reqParam
 }
 
+func canBeBuffered(reqParam model.RequestParam, sqprops *model.ServiceQProperties) bool {
+
+	if (*sqprops).EnableDeferredQ {
+
+		reqFormats := (*sqprops).DeferredQRequestFormats
+
+		if reqFormats == nil || reqFormats[0] == "ALL" {
+			return true
+		}
+
+		for _, rf := range reqFormats {
+			satisfy := false
+			rfBrkUp := strings.Split(rf, " ")
+			if (0 < len(rfBrkUp) && reqParam.Method == rfBrkUp[0]) || (0 >= len(rfBrkUp)) {
+				satisfy = true
+				if (1 < len(rfBrkUp) && reqParam.RequestURI == rfBrkUp[1]) || (1 >= len(rfBrkUp)) {
+					satisfy = true
+				} else {
+					satisfy = false
+				}
+			}
+
+			if satisfy {
+				return satisfy
+			}
+		}
+	}
+
+	return false
+}
+
 func dialAndSend(reqParam model.RequestParam, sqprops *model.ServiceQProperties) (*http.Response, bool, error) {
 
 	choice := -1
@@ -121,7 +153,7 @@ func dialAndSend(reqParam model.RequestParam, sqprops *model.ServiceQProperties)
 		newRequest.Header = reqParam.Headers
 
 		// do http call
-		client := &http.Client{Timeout: time.Duration((*sqprops).OutReqTimeout) * time.Millisecond}
+		client := &http.Client{Timeout: time.Duration((*sqprops).OutRequestTimeout) * time.Millisecond}
 		resp, err := client.Do(newRequest)
 
 		// handle response

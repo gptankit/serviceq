@@ -86,9 +86,11 @@ func assignProperties(sqprops *model.ServiceQProperties, config model.Config) {
 	(*sqprops).CustomRequestHeaders = config.CustomRequestHeaders
 	(*sqprops).CustomResponseHeaders = config.CustomResponseHeaders
 	(*sqprops).MaxConcurrency = config.ConcurrencyPeak
+	(*sqprops).EnableDeferredQ = config.EnableDeferredQ
+	(*sqprops).DeferredQRequestFormats = config.DeferredQRequestFormats
 	(*sqprops).MaxRetries = (len(sqprops.ServiceList) * 2) + 1 // atleast-once trial
 	(*sqprops).RetryGap = config.RetryGap
 	(*sqprops).IdleGap = 500
 	(*sqprops).RequestErrorLog = make(map[string]int, len(config.Endpoints))
-	(*sqprops).OutReqTimeout = config.OutReqTimeout
+	(*sqprops).OutRequestTimeout = config.OutRequestTimeout
 }

@@ -11,15 +11,17 @@ import (
 )
 
 const (
-	SQP_K_LISTENER_PORT        = "LISTENER_PORT"
-	SQP_K_PROTOCOL             = "PROTO"
-	SQP_K_ENDPOINTS            = "ENDPOINTS"
-	SQP_K_REQUEST_HEADERS      = "CUSTOM_REQUEST_HEADERS"
-	SQP_K_RESPONSE_HEADERS     = "CUSTOM_RESPONSE_HEADERS"
-	SQP_K_MAX_CONCURRENT_CONNS = "CONCURRENCY_PEAK"
-	SQP_K_RETRY_GAP            = "RETRY_GAP"
-	SQP_K_OUT_REQ_TIMEOUT      = "OUTGOING_REQUEST_TIMEOUT"
-	SQP_K_ENABLE_PROFILING_FOR = "ENABLE_PROFILING_FOR"
+	SQP_K_LISTENER_PORT              = "LISTENER_PORT"
+	SQP_K_PROTOCOL                   = "PROTO"
+	SQP_K_ENDPOINTS                  = "ENDPOINTS"
+	SQP_K_REQUEST_HEADERS            = "CUSTOM_REQUEST_HEADERS"
+	SQP_K_RESPONSE_HEADERS           = "CUSTOM_RESPONSE_HEADERS"
+	SQP_K_MAX_CONCURRENT_CONNS       = "CONCURRENCY_PEAK"
+	SQP_K_ENABLE_DEFERRED_Q          = "ENABLE_DEFERRED_Q"
+	SQP_K_DEFERRED_Q_REQUEST_FORMATS = "DEFERRED_Q_REQUEST_FORMATS"
+	SQP_K_RETRY_GAP                  = "RETRY_GAP"
+	SQP_K_OUT_REQUEST_TIMEOUT        = "OUTGOING_REQUEST_TIMEOUT"
+	SQP_K_ENABLE_PROFILING_FOR       = "ENABLE_PROFILING_FOR"
 )
 
 func GetConfiguration(confFilePath string) (model.Config, error) {
@@ -102,15 +104,21 @@ func populate(config model.Config, kvpart []string) model.Config {
 		break
 	case SQP_K_MAX_CONCURRENT_CONNS:
 		config.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
-		fmt.Printf("Concurreny Peak> %s\n", kvpart[1])
+		fmt.Printf("Concurreny Peak> %d\n", config.ConcurrencyPeak)
+		break
+	case SQP_K_ENABLE_DEFERRED_Q:
+		config.EnableDeferredQ, _ = strconv.ParseBool(kvpart[1])
+		break
+	case SQP_K_DEFERRED_Q_REQUEST_FORMATS:
+		config.DeferredQRequestFormats = strings.Split(kvpart[1], ",")
 		break
 	case SQP_K_RETRY_GAP:
 		retryGapVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
 		config.RetryGap = int(retryGapVal)
 		break
-	case SQP_K_OUT_REQ_TIMEOUT:
+	case SQP_K_OUT_REQUEST_TIMEOUT:
 		timeoutVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
-		config.OutReqTimeout = int32(timeoutVal)
+		config.OutRequestTimeout = int32(timeoutVal)
 		break
 	case SQP_K_RESPONSE_HEADERS:
 		vpart := strings.Split(kvpart[1], "|")

@@ -20,11 +20,13 @@ func TestWorkAssigment(t *testing.T) {
 		{RawUrl: "http://example.org:5001", Scheme: "http", QualifiedUrl: "http://example.org:5001", Host: "example.org:5001"},
 	}
 	sqp.MaxConcurrency = 8 // if changing, do check value of duplicateWork
-	sqp.MaxRetries = 1     // we know it's down
-	sqp.RetryGap = 1000    // ms
-	sqp.IdleGap = 500      // ms
+	sqp.EnableDeferredQ = true
+	sqp.DeferredQRequestFormats = []string{"ALL"}
+	sqp.MaxRetries = 1  // we know it's down
+	sqp.RetryGap = 0 // ms
+	sqp.IdleGap = 500   // ms
 	sqp.RequestErrorLog = make(map[string]int, 2)
-	sqp.OutReqTimeout = 500
+	sqp.OutRequestTimeout = 300000
 
 	cw := make(chan int, sqp.MaxConcurrency)
 	cr := make(chan interface{}, sqp.MaxConcurrency)
