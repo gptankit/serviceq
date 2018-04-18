@@ -4,16 +4,16 @@ import (
 	"model"
 )
 
-func IncrementErrorCount(sqprops *model.ServiceQProperties, service string) {
+func IncrementErrorCount(sqp *model.ServiceQProperties, service string) {
 
-	(*sqprops).REMutex.Lock()
-	defer (*sqprops).REMutex.Unlock()
-	(*sqprops).RequestErrorLog[service] += 1
+	(*sqp).REMutex.Lock()
+	defer (*sqp).REMutex.Unlock()
+	(*sqp).RequestErrorLog[service] += 1
 }
 
-func ResetErrorCount(sqprops *model.ServiceQProperties, service string) {
+func ResetErrorCount(sqp *model.ServiceQProperties, service string) {
 
-	(*sqprops).REMutex.Lock()
-	defer (*sqprops).REMutex.Unlock()
-	(*sqprops).RequestErrorLog[service] = 0
+	(*sqp).REMutex.Lock()
+	defer (*sqp).REMutex.Unlock()
+	(*sqp).RequestErrorLog[service] = 0
 }

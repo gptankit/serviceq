@@ -22,29 +22,29 @@ const (
 	RESPONSE_NO_RESPONSE  = "NO_RESPONSE"
 )
 
-func HandleConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqprops *model.ServiceQProperties) {
+func HandleConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
-	var response *http.Response
+	var res *http.Response
 	var reqParam model.RequestParam
 	var toBuffer bool
 
 	httpConn := model.HTTPConnection{}
 	httpConn.Enclose(conn)
-	request, err := httpConn.ReadFrom()
+	req, err := httpConn.ReadFrom()
 
 	if err == nil {
-		reqParam = saveReqParam(request)
-		response, toBuffer, err = dialAndSend(reqParam, sqprops)
+		reqParam = saveReqParam(req)
+		res, toBuffer, err = dialAndSend(reqParam, sqp)
 	}
 
 	if err == nil {
-		err = httpConn.WriteTo(response, (*sqprops).CustomResponseHeaders)
+		err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
 		}
 	}
 
-	if toBuffer && canBeBuffered(reqParam, sqprops) {
+	if toBuffer && canBeBuffered(reqParam, sqp) {
 		creq <- reqParam
 		cwork <- 1
 		fmt.Printf("Request bufferred\n")
@@ -56,9 +56,9 @@ func HandleConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp
 	return
 }
 
-func HandleBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqprops *model.ServiceQProperties) {
+func HandleBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
-	_, toBuffer, _ := dialAndSend(reqParam, sqprops)
+	_, toBuffer, _ := dialAndSend(reqParam, sqp)
 
 	if toBuffer {
 		creq <- reqParam
@@ -71,23 +71,23 @@ func HandleBufferedReader(reqParam model.RequestParam, creq chan interface{}, cw
 	return
 }
 
-func saveReqParam(request *http.Request) model.RequestParam {
+func saveReqParam(req *http.Request) model.RequestParam {
 
 	var reqParam model.RequestParam
 
-	reqParam.Protocol = request.Proto
-	reqParam.Method = request.Method
-	reqParam.RequestURI = request.RequestURI
+	reqParam.Protocol = req.Proto
+	reqParam.Method = req.Method
+	reqParam.RequestURI = req.RequestURI
 
-	if request.Body != nil {
-		if bodyBuff, err := ioutil.ReadAll(request.Body); err == nil {
+	if req.Body != nil {
+		if bodyBuff, err := ioutil.ReadAll(req.Body); err == nil {
 			reqParam.BodyBuff = bodyBuff
 		}
 	}
 
-	if request.Header != nil {
-		reqParam.Headers = make(map[string][]string, len(request.Header))
-		for k, v := range request.Header {
+	if req.Header != nil {
+		reqParam.Headers = make(map[string][]string, len(req.Header))
+		for k, v := range req.Header {
 			reqParam.Headers[k] = v
 		}
 	}
@@ -95,11 +95,11 @@ func saveReqParam(request *http.Request) model.RequestParam {
 	return reqParam
 }
 
-func canBeBuffered(reqParam model.RequestParam, sqprops *model.ServiceQProperties) bool {
+func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) bool {
 
-	if (*sqprops).EnableDeferredQ {
+	if (*sqp).EnableDeferredQ {
 
-		reqFormats := (*sqprops).DeferredQRequestFormats
+		reqFormats := (*sqp).DeferredQRequestFormats
 
 		if reqFormats == nil || reqFormats[0] == "ALL" {
 			return true
@@ -128,40 +128,40 @@ func canBeBuffered(reqParam model.RequestParam, sqprops *model.ServiceQPropertie
 	return false
 }
 
-func dialAndSend(reqParam model.RequestParam, sqprops *model.ServiceQProperties) (*http.Response, bool, error) {
+func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*http.Response, bool, error) {
 
 	choice := -1
-	noOfServices := len((*sqprops).ServiceList)
+	noOfServices := len((*sqp).ServiceList)
 	var clientErr error
 
-	for retry := 0; retry < (*sqprops).MaxRetries; retry++ {
+	for retry := 0; retry < (*sqp).MaxRetries; retry++ {
 
 		choice = netserve.ChooseServiceIndex(noOfServices, choice, retry)
-		dstService := (*sqprops).ServiceList[choice]
+		upstrService := (*sqp).ServiceList[choice]
 
-		fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), dstService.Host)
+		fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), upstrService.Host)
 		// ping ip
-		if !netserve.IsTCPAlive(dstService.Host) {
-			errorlog.IncrementErrorCount(sqprops, dstService.QualifiedUrl)
-			time.Sleep(time.Duration((*sqprops).RetryGap) * time.Millisecond) // wait on error
+		if !netserve.IsTCPAlive(upstrService.Host) {
+			errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl)
+			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
 			clientErr = errors.New(RESPONSE_SERVICE_DOWN)
 			continue
 		}
 
-		fmt.Printf("->Forwarding to %s\n", dstService.QualifiedUrl)
+		fmt.Printf("->Forwarding to %s\n", upstrService.QualifiedUrl)
 
 		body := ioutil.NopCloser(bytes.NewReader(reqParam.BodyBuff))
-		newRequest, _ := http.NewRequest(reqParam.Method, dstService.QualifiedUrl+reqParam.RequestURI, body)
-		newRequest.Header = reqParam.Headers
+		upstrReq, _ := http.NewRequest(reqParam.Method, upstrService.QualifiedUrl+reqParam.RequestURI, body)
+		upstrReq.Header = reqParam.Headers
 
 		// do http call
-		client := &http.Client{Timeout: time.Duration((*sqprops).OutRequestTimeout) * time.Millisecond}
-		resp, err := client.Do(newRequest)
+		client := &http.Client{Timeout: time.Duration((*sqp).OutRequestTimeout) * time.Millisecond}
+		resp, err := client.Do(upstrReq)
 
 		// handle response
 		if resp == nil || err != nil {
-			go errorlog.IncrementErrorCount(sqprops, dstService.QualifiedUrl)
-			time.Sleep(time.Duration((*sqprops).RetryGap) * time.Millisecond) // wait on error
+			go errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl)
+			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
 			clientErr = err
 			if clientErr != nil {
 				if e, ok := clientErr.(net.Error); ok && e.Timeout() {
@@ -174,7 +174,7 @@ func dialAndSend(reqParam model.RequestParam, sqprops *model.ServiceQProperties)
 			}
 			break
 		} else {
-			go errorlog.ResetErrorCount(sqprops, dstService.QualifiedUrl)
+			go errorlog.ResetErrorCount(sqp, upstrService.QualifiedUrl)
 			clientErr = nil
 			return resp, false, nil
 		}

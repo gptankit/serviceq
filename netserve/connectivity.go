@@ -9,8 +9,8 @@ import (
 
 func IsTCPAlive(service string) bool {
 
-	dialTimeout := 1000
-	conn, err := net.DialTimeout("tcp", service, time.Duration(dialTimeout)*time.Millisecond)
+	dialTO := 1000
+	conn, err := net.DialTimeout("tcp", service, time.Duration(dialTO) * time.Millisecond)
 	if err == nil {
 		conn.Close()
 		return true

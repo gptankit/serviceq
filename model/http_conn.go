@@ -30,23 +30,23 @@ func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 	return nil, errors.New("read-fail")
 }
 
-func (httpConn *HTTPConnection) WriteTo(resp *http.Response, customHeaders []string) error {
+func (httpConn *HTTPConnection) WriteTo(res *http.Response, customHeaders []string) error {
 
 	writer := bufio.NewWriter(*httpConn.tcpConn)
 
 	var responseBody []byte
-	if resp.Body != nil {
-		responseBody, _ = ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
+	if res.Body != nil {
+		responseBody, _ = ioutil.ReadAll(res.Body)
+		res.Body.Close()
 	}
 
-	responseProtocol := resp.Proto
+	responseProtocol := res.Proto
 	responseHeaders := ""
-	responseStatus := resp.Status
+	responseStatus := res.Status
 
 	// add original response headers
-	if resp.Header != nil {
-		for k, v := range resp.Header {
+	if res.Header != nil {
+		for k, v := range res.Header {
 			responseHeaders += k + ": " + strings.Join(v, ",") + "\n"
 		}
 	}
@@ -63,11 +63,11 @@ func (httpConn *HTTPConnection) WriteTo(resp *http.Response, customHeaders []str
 		responseStatus = responseStatus + "\n"
 	}
 
-	responseStr := responseProtocol + " " + responseStatus + responseHeaders + "\n\n" + string(responseBody)
+	clientResStr := responseProtocol + " " + responseStatus + responseHeaders + "\n\n" + string(responseBody)
 
-	response := []byte(responseStr)
+	clientRes := []byte(clientResStr)
 
-	_, err := writer.Write(response) // tunneling onto tcp conn writer
+	_, err := writer.Write(clientRes) // tunneling onto tcp conn writer
 	if err == nil {
 		writer.Flush()
 		return nil

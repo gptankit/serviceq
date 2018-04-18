@@ -74,6 +74,6 @@ DEFERRED_Q_REQUEST_FORMATS=ALL
 
 After all is set - </br>
 
-<pre>$ /opt/serviceq/serviceq</pre>
+<pre>$ sudo /opt/serviceq/serviceq</pre>
 
 Feel free to play around and post feedbacks

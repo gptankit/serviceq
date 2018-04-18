@@ -27,12 +27,12 @@ const (
 func GetConfiguration(confFilePath string) (model.Config, error) {
 
 	confFileSize := 0
-	var config model.Config
+	var cfg model.Config
 
 	if fileStat, err := os.Stat(confFilePath); err == nil {
 		confFileSize = int(fileStat.Size())
 	} else {
-		return config, err
+		return cfg, err
 	}
 
 	if confFileSize > 0 {
@@ -45,7 +45,7 @@ func GetConfiguration(confFilePath string) (model.Config, error) {
 					sline := string(line)
 					kvpart := strings.Split(sline, "=")
 					if kvpart != nil && len(kvpart) > 0 {
-						config = populate(config, kvpart)
+						cfg = populate(cfg, kvpart)
 					}
 				} else {
 					if err.Error() == "EOF" {
@@ -54,11 +54,11 @@ func GetConfiguration(confFilePath string) (model.Config, error) {
 				}
 			}
 		} else {
-			return config, err
+			return cfg, err
 		}
 	}
 
-	return config, nil
+	return cfg, nil
 }
 
 func GetConfFileLocation() string {
@@ -67,15 +67,15 @@ func GetConfFileLocation() string {
 	return sqwd + "/config/sq.properties"
 }
 
-func populate(config model.Config, kvpart []string) model.Config {
+func populate(cfg model.Config, kvpart []string) model.Config {
 
 	switch kvpart[0] {
 
 	case SQP_K_LISTENER_PORT:
-		config.ListenerPort = kvpart[1]
+		cfg.ListenerPort = kvpart[1]
 		break
 	case SQP_K_PROTOCOL:
-		config.Proto = kvpart[1]
+		cfg.Proto = kvpart[1]
 		break
 	case SQP_K_ENDPOINTS:
 		vpart := strings.Split(kvpart[1], ",")
@@ -98,42 +98,42 @@ func populate(config model.Config, kvpart []string) model.Config {
 			}
 			endpoint.QualifiedUrl = s + port
 			endpoint.Host = uri.Host + port
-			config.Endpoints = append(config.Endpoints, endpoint)
+			cfg.Endpoints = append(cfg.Endpoints, endpoint)
 			fmt.Printf("Service Addr> %s\n", endpoint.QualifiedUrl)
 		}
 		break
 	case SQP_K_MAX_CONCURRENT_CONNS:
-		config.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
-		fmt.Printf("Concurreny Peak> %d\n", config.ConcurrencyPeak)
+		cfg.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
+		fmt.Printf("Concurreny Peak> %d\n", cfg.ConcurrencyPeak)
 		break
 	case SQP_K_ENABLE_DEFERRED_Q:
-		config.EnableDeferredQ, _ = strconv.ParseBool(kvpart[1])
+		cfg.EnableDeferredQ, _ = strconv.ParseBool(kvpart[1])
 		break
 	case SQP_K_DEFERRED_Q_REQUEST_FORMATS:
-		config.DeferredQRequestFormats = strings.Split(kvpart[1], ",")
+		cfg.DeferredQRequestFormats = strings.Split(kvpart[1], ",")
 		break
 	case SQP_K_RETRY_GAP:
 		retryGapVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
-		config.RetryGap = int(retryGapVal)
+		cfg.RetryGap = int(retryGapVal)
 		break
 	case SQP_K_OUT_REQUEST_TIMEOUT:
 		timeoutVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
-		config.OutRequestTimeout = int32(timeoutVal)
+		cfg.OutRequestTimeout = int32(timeoutVal)
 		break
 	case SQP_K_RESPONSE_HEADERS:
 		vpart := strings.Split(kvpart[1], "|")
 		for _, s := range vpart {
 			if s != "" {
-				config.CustomResponseHeaders = append(config.CustomResponseHeaders, s)
+				cfg.CustomResponseHeaders = append(cfg.CustomResponseHeaders, s)
 			}
 		}
 		break
 	case SQP_K_ENABLE_PROFILING_FOR:
-		config.EnableProfilingFor = kvpart[1]
+		cfg.EnableProfilingFor = kvpart[1]
 		break
 	default:
 		break
 	}
 
-	return config
+	return cfg
 }
