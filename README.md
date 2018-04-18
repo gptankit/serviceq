@@ -69,7 +69,8 @@ ENABLE_DEFERRED_Q=true
 
 #Request format allows given method/route on deferred queue -- picked up if ENABLE_DEFERRED_Q is true
 #DEFERRED_Q_REQUEST_FORMATS=POST /orders,PUT,PATCH,DELETE
-DEFERRED_Q_REQUEST_FORMATS=ALL
+#DEFERRED_Q_REQUEST_FORMATS=ALL
+DEFERRED_Q_REQUEST_FORMATS=POST,PUT,PATCH,DELETE
 </pre>
 
 After all is set - </br>

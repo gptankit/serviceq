@@ -1,9 +1,7 @@
 package netserve
 
 import (
-	"fmt"
 	"net"
-	"os"
 	"time"
 )
 
@@ -16,6 +14,5 @@ func IsTCPAlive(service string) bool {
 		return true
 	}
 
-	fmt.Fprintf(os.Stderr, "->Service is down at %s\n", service)
 	return false
 }

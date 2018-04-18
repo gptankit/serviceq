@@ -14,7 +14,7 @@ func BenchmarkConcurrentErrorIncrements(b *testing.B) {
 
 	// concurrent access to map
 	for i := 0; i < b.N; i++ {
-		go IncrementErrorCount(&sqp, "s0")
+		go IncrementErrorCount(&sqp, "s0", 1, "SERVICE_DOWN")
 	}
 }
 
@@ -27,6 +27,6 @@ func BenchmarkSequentialErrorIncrements(b *testing.B) {
 
 	// sequential access to map
 	for i := 0; i < b.N; i++ {
-		IncrementErrorCount(&sqp, "s0")
+		IncrementErrorCount(&sqp, "s0", 1, "SERVICE_DOWN")
 	}
 }

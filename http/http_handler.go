@@ -17,6 +17,11 @@ import (
 )
 
 const (
+
+	UPSTREAM_NO_ERR = 0
+	UPSTREAM_TCP_ERR = 1
+	UPSTREAM_HTTP_ERR = 2
+
 	RESPONSE_TIMED_OUT    = "TIMED_OUT"
 	RESPONSE_SERVICE_DOWN = "SERVICE_DOWN"
 	RESPONSE_NO_RESPONSE  = "NO_RESPONSE"
@@ -142,9 +147,9 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 		fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), upstrService.Host)
 		// ping ip
 		if !netserve.IsTCPAlive(upstrService.Host) {
-			errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl)
-			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
 			clientErr = errors.New(RESPONSE_SERVICE_DOWN)
+			errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
+			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
 			continue
 		}
 
@@ -160,8 +165,6 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 
 		// handle response
 		if resp == nil || err != nil {
-			go errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl)
-			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
 			clientErr = err
 			if clientErr != nil {
 				if e, ok := clientErr.(net.Error); ok && e.Timeout() {
@@ -172,6 +175,8 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 			} else {
 				clientErr = errors.New(RESPONSE_NO_RESPONSE)
 			}
+			go errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, UPSTREAM_HTTP_ERR, clientErr.Error())
+			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
 			break
 		} else {
 			go errorlog.ResetErrorCount(sqp, upstrService.QualifiedUrl)

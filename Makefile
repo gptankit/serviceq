@@ -40,9 +40,11 @@ install:
 	if [ ! -d /opt/serviceq ] ; then \
 		sudo mkdir /opt/serviceq; \
 		sudo mkdir /opt/serviceq/config; \
+		sudo mkdir /opt/serviceq/logs; \
 	fi
 	sudo cp serviceq /opt/serviceq/
 	sudo cp sq.properties /opt/serviceq/config
+	sudo touch /opt/serviceq/logs/serviceq_error.log
 	sudo rm -f serviceq
 	@echo 'Binary location: /opt/serviceq/serviceq'
 	@echo 'done'

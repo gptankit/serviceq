@@ -22,6 +22,8 @@ const (
 	SQP_K_RETRY_GAP                  = "RETRY_GAP"
 	SQP_K_OUT_REQUEST_TIMEOUT        = "OUTGOING_REQUEST_TIMEOUT"
 	SQP_K_ENABLE_PROFILING_FOR       = "ENABLE_PROFILING_FOR"
+
+	sqwd = "/opt/serviceq"
 )
 
 func GetConfiguration(confFilePath string) (model.Config, error) {
@@ -59,12 +61,6 @@ func GetConfiguration(confFilePath string) (model.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func GetConfFileLocation() string {
-
-	sqwd := "/opt/serviceq"
-	return sqwd + "/config/sq.properties"
 }
 
 func populate(cfg model.Config, kvpart []string) model.Config {
@@ -137,3 +133,14 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 
 	return cfg
 }
+
+func GetConfFileLocation() string {
+
+	return sqwd + "/config/sq.properties"
+}
+
+func GetLogFileLocation() string {
+
+	return sqwd + "/logs/serviceq_error.log"
+}
+
