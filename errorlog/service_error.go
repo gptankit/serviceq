@@ -4,14 +4,14 @@ import (
 	"model"
 	"log"
 	"os"
-	"props"
 )
 
 var logger *log.Logger
 
 func init() {
 
-	file, err := os.OpenFile(props.GetLogFileLocation(), os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	logFileLocation := "/opt/serviceq/logs/serviceq_error.log"
+	file, err := os.OpenFile(logFileLocation, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err == nil {
 		logger = log.New(file, "ServiceQ: ", log.Ldate | log.Ltime)
 	}

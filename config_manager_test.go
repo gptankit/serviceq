@@ -1,4 +1,4 @@
-package props
+package main
 
 import (
 	"model"
@@ -14,9 +14,8 @@ var props Properties
 
 func TestReadConfiguration(t *testing.T) {
 
-	rd := "../"
-	cfPath := rd + "sq.properties"
-	cfg, err := GetConfiguration(cfPath)
+	cfPath := "sq.properties"
+	cfg, err := getConfiguration(cfPath)
 
 	props = Properties{c: cfg, e: err}
 	if err != nil {

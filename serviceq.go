@@ -2,17 +2,16 @@ package main
 
 import (
 	"fmt"
-	sqhttp "http"
 	"model"
 	"net"
 	"os"
-	"props"
+	"protocol"
 	"time"
 )
 
 func main() {
 
-	if config, err := props.GetConfiguration(props.GetConfFileLocation()); err == nil {
+	if config, err := getConfiguration(getConfFileLocation()); err == nil {
 		sqp := assignProperties(config)
 
 		if listener, err := net.Listen("tcp", "localhost:"+sqp.ListenerPort); err == nil {
@@ -20,7 +19,7 @@ func main() {
 
 			if len(sqp.ServiceList) > 0 {
 
-				cwork := make(chan int, sqp.MaxConcurrency)        // work done queue
+				cwork := make(chan int, sqp.MaxConcurrency+1)      // work done queue
 				creq := make(chan interface{}, sqp.MaxConcurrency) // request queue
 
 				// observe bufferred requests
@@ -43,16 +42,16 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 
 	for {
 		if conn, err := listener.Accept(); err == nil {
-			if len(cwork) < cap(cwork) {
+			if len(cwork) < cap(cwork)-1 {
 				cwork <- 1
 				if (*sqp).Proto == "http" {
-					go sqhttp.HandleConnection(&conn, creq, cwork, sqp)
+					go protocol.HandleHttpConnection(&conn, creq, cwork, sqp)
 				} else {
 					<-cwork
 					conn.Close()
 				}
 			} else {
-				conn.Close() // refuse connection
+				protocol.DiscardHttpConnection(&conn, sqp)
 			}
 		}
 	}
@@ -63,7 +62,7 @@ func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQPr
 	for {
 		if len(cwork) > 0 && len(creq) > 0 {
 			if (*sqp).Proto == "http" {
-				go sqhttp.HandleBufferedReader((<-creq).(model.RequestParam), creq, cwork, sqp)
+				go protocol.HandleHttpBufferedReader((<-creq).(model.RequestParam), creq, cwork, sqp)
 			}
 		} else {
 			time.Sleep(time.Duration((*sqp).IdleGap) * time.Millisecond) // wait for more work

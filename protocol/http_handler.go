@@ -1,10 +1,11 @@
-package http
+package protocol
 
 import (
 	"bytes"
 	"errorlog"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"model"
 	"net"
@@ -18,16 +19,19 @@ import (
 
 const (
 
-	UPSTREAM_NO_ERR = 0
-	UPSTREAM_TCP_ERR = 1
-	UPSTREAM_HTTP_ERR = 2
+	SERVICEQ_NO_ERR = 600
+	SERVICEQ_FLOODED_ERR = 601
+	UPSTREAM_NO_ERR = 700
+	UPSTREAM_TCP_ERR = 701
+	UPSTREAM_HTTP_ERR = 702
 
-	RESPONSE_TIMED_OUT    = "TIMED_OUT"
-	RESPONSE_SERVICE_DOWN = "SERVICE_DOWN"
-	RESPONSE_NO_RESPONSE  = "NO_RESPONSE"
+	RESPONSE_FLOODED      = "SERVICEQ_FLOODED"
+	RESPONSE_TIMED_OUT    = "UPSTREAM_TIMED_OUT"
+	RESPONSE_SERVICE_DOWN = "UPSTREAM_DOWN"
+	RESPONSE_NO_RESPONSE  = "UPSTREAM_NO_RESPONSE"
 )
 
-func HandleConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	var res *http.Response
 	var reqParam model.RequestParam
@@ -61,7 +65,25 @@ func HandleConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp
 	return
 }
 
-func HandleBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
+
+	var res *http.Response
+	httpConn := model.HTTPConnection{}
+	httpConn.Enclose(conn)
+	req, err := httpConn.ReadFrom()
+
+	res = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
+	clientErr := errors.New(RESPONSE_FLOODED)
+	errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
+	err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+	}
+
+	(*conn).Close()
+}
+
+func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	_, toBuffer, _ := dialAndSend(reqParam, sqp)
 
@@ -196,21 +218,28 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 func checkErrorAndRespond(clientErr error, protocol string) (*http.Response, bool, error) {
 
 	if clientErr.Error() == RESPONSE_TIMED_OUT {
-		return getCustomResponse(protocol, http.StatusGatewayTimeout), false, nil
+		return getCustomResponse(protocol, http.StatusGatewayTimeout, ""), false, nil
 	} else if clientErr.Error() == RESPONSE_SERVICE_DOWN {
-		return getCustomResponse(protocol, http.StatusServiceUnavailable), true, nil
+		return getCustomResponse(protocol, http.StatusServiceUnavailable, "Request Buffered"), true, nil
 	} else if clientErr.Error() == RESPONSE_NO_RESPONSE {
-		return getCustomResponse(protocol, http.StatusBadRequest), false, nil
+		return getCustomResponse(protocol, http.StatusBadRequest, ""), false, nil
 	} else {
-		return getCustomResponse(protocol, http.StatusBadGateway), false, nil
+		return getCustomResponse(protocol, http.StatusBadGateway, ""), false, nil
 	}
 }
 
-func getCustomResponse(protocol string, statusCode int) *http.Response {
+func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Response {
+
+	var body io.ReadCloser
+	if resMsg != "" {
+		json := `{"sq_msg":"` + resMsg +`"}`
+		body = ioutil.NopCloser(bytes.NewReader([]byte(json)))
+	}
 
 	return &http.Response{
 		Proto:      protocol,
 		Status:     strconv.Itoa(statusCode) + " " + http.StatusText(statusCode),
 		StatusCode: statusCode, Header: http.Header{"Content-Type": []string{"application/json"}},
+		Body :	    body,
 	}
 }

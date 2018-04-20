@@ -1,4 +1,4 @@
-package props
+package main
 
 import (
 	"bufio"
@@ -26,7 +26,12 @@ const (
 	sqwd = "/opt/serviceq"
 )
 
-func GetConfiguration(confFilePath string) (model.Config, error) {
+func getConfFileLocation() string {
+
+	return sqwd + "/config/sq.properties"
+}
+
+func getConfiguration(confFilePath string) (model.Config, error) {
 
 	confFileSize := 0
 	var cfg model.Config
@@ -133,14 +138,3 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 
 	return cfg
 }
-
-func GetConfFileLocation() string {
-
-	return sqwd + "/config/sq.properties"
-}
-
-func GetLogFileLocation() string {
-
-	return sqwd + "/logs/serviceq_error.log"
-}
-
