@@ -90,7 +90,7 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 			port := ""
 			endpoint.RawUrl = s
 			endpoint.Scheme = uri.Scheme
-			if !strings.Contains(uri.Host, ":") {
+			if strings.IndexByte(uri.Host, ':') == -1 || (strings.IndexByte(uri.Host, ']') != -1 && strings.Index(uri.Host, "]:") == -1) {
 				if uri.Scheme == "http" {
 					port = ":80"
 				} else if uri.Scheme == "https" {
