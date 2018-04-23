@@ -59,7 +59,6 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 		fmt.Printf("Request bufferred\n")
 	}
 
-	(*conn).Close()
 	<-cwork
 
 	return
