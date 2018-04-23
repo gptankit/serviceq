@@ -61,7 +61,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 		fmt.Printf("Request bufferred\n")
 		forceCloseConn(conn)
 	} else {
-		optCloseConn(conn, reqParam)
+		optCloseConn(conn, reqParam, (*sqp).CustomResponseHeaders)
 	}
 
 	<-cwork
@@ -85,6 +85,8 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 	}
 
 	forceCloseConn(conn)
+
+	return
 }
 
 func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
@@ -250,18 +252,41 @@ func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Res
 	}
 }
 
-func optCloseConn(conn *net.Conn, reqParam model.RequestParam) {
+func optCloseConn(conn *net.Conn, reqParam model.RequestParam, customResHeaders []string) {
 
-	if reqParam.Protocol != "HTTP/1.0" && reqParam.Headers != nil {
-		if v, ok := reqParam.Headers["Connection"]; ok {
-			if v[0] == "close" {
-				forceCloseConn(conn)
+	if reqParam.Headers == nil {
+		forceCloseConn(conn)
+	}
+
+	keepAlive := false
+	if customResHeaders != nil {
+		for _, h := range customResHeaders {
+			h = strings.Replace(h, " ", "", -1)
+			if strings.Contains(h, "Connection:keep-alive") {
+				keepAlive = true
+				break
 			}
 		}
 	}
+
+	if reqParam.Headers != nil {
+		if v, ok := reqParam.Headers["Connection"]; ok {
+			if v[0] == "keep-alive" && keepAlive {
+				// don't do anything
+			} else if v[0] == "close" || !keepAlive {
+				forceCloseConn(conn)
+			}
+		} else {
+			forceCloseConn(conn)
+		}
+	}
+
+	return
 }
 
 func forceCloseConn(conn *net.Conn) {
 
 	(*conn).Close()
+
+	return
 }
