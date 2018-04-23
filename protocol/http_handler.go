@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+var client *http.Client
+
 const (
 
 	SERVICEQ_NO_ERR = 600
@@ -57,6 +59,9 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 		creq <- reqParam
 		cwork <- 1
 		fmt.Printf("Request bufferred\n")
+		forceCloseConn(conn)
+	} else {
+		optCloseConn(conn, reqParam)
 	}
 
 	<-cwork
@@ -79,7 +84,7 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 		fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
 	}
 
-	(*conn).Close()
+	forceCloseConn(conn)
 }
 
 func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
@@ -181,7 +186,9 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 		upstrReq.Header = reqParam.Headers
 
 		// do http call
-		client := &http.Client{Timeout: time.Duration((*sqp).OutRequestTimeout) * time.Millisecond}
+		if client == nil {
+			client = &http.Client{Timeout: time.Duration((*sqp).OutRequestTimeout) * time.Millisecond}
+		}
 		resp, err := client.Do(upstrReq)
 
 		// handle response
@@ -241,4 +248,20 @@ func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Res
 		StatusCode: statusCode, Header: http.Header{"Content-Type": []string{"application/json"}},
 		Body :	    body,
 	}
+}
+
+func optCloseConn(conn *net.Conn, reqParam model.RequestParam) {
+
+	if reqParam.Protocol != "HTTP/1.0" && reqParam.Headers != nil {
+		if v, ok := reqParam.Headers["Connection"]; ok {
+			if v[0] == "close" {
+				forceCloseConn(conn)
+			}
+		}
+	}
+}
+
+func forceCloseConn(conn *net.Conn) {
+
+	(*conn).Close()
 }
