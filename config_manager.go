@@ -65,6 +65,8 @@ func getConfiguration(confFilePath string) (model.Config, error) {
 		}
 	}
 
+	validate(cfg)
+
 	return cfg, nil
 }
 
@@ -137,4 +139,12 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 	}
 
 	return cfg
+}
+
+func validate(cfg model.Config) {
+
+	if cfg.Proto == "" || cfg.ListenerPort == "" || len(cfg.Endpoints) == 0 || cfg.ConcurrencyPeak <= 0 {
+		fmt.Fprintf(os.Stderr, "Something wrong with sq.properties... exiting\n")
+		os.Exit(1)
+	}
 }

@@ -55,7 +55,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 		}
 	}
 
-	if toBuffer && canBeBuffered(reqParam, sqp) {
+	if toBuffer {
 		creq <- reqParam
 		cwork <- 1
 		fmt.Printf("Request bufferred\n")
@@ -128,39 +128,6 @@ func saveReqParam(req *http.Request) model.RequestParam {
 	return reqParam
 }
 
-func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) bool {
-
-	if (*sqp).EnableDeferredQ {
-
-		reqFormats := (*sqp).DeferredQRequestFormats
-
-		if reqFormats == nil || reqFormats[0] == "ALL" {
-			return true
-		}
-
-		for _, rf := range reqFormats {
-			satisfy := false
-			rfBrkUp := strings.Split(rf, " ")
-			if (0 < len(rfBrkUp) && reqParam.Method == rfBrkUp[0]) || (0 >= len(rfBrkUp)) {
-				satisfy = true
-				if (1 < len(rfBrkUp) && reqParam.RequestURI == rfBrkUp[1]) || (1 >= len(rfBrkUp)) {
-					satisfy = true
-					if 2 < len(rfBrkUp) && rfBrkUp[2] == "!" {
-						satisfy = false
-					}
-				} else {
-					satisfy = false
-				}
-			}
-			if satisfy {
-				return satisfy
-			}
-		}
-	}
-
-	return false
-}
-
 func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*http.Response, bool, error) {
 
 	choice := -1
@@ -217,22 +184,26 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 
 	// error based response
 	if clientErr != nil {
-		return checkErrorAndRespond(clientErr, reqParam.Protocol)
+		return checkErrorAndRespond(clientErr, reqParam, sqp)
 	}
 
 	return nil, true, errors.New("send-fail")
 }
 
-func checkErrorAndRespond(clientErr error, protocol string) (*http.Response, bool, error) {
+func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *model.ServiceQProperties) (*http.Response, bool, error) {
 
 	if clientErr.Error() == RESPONSE_TIMED_OUT {
-		return getCustomResponse(protocol, http.StatusGatewayTimeout, ""), false, nil
+		return getCustomResponse(reqParam.Protocol, http.StatusGatewayTimeout, ""), false, nil
 	} else if clientErr.Error() == RESPONSE_SERVICE_DOWN {
-		return getCustomResponse(protocol, http.StatusServiceUnavailable, "Request Buffered"), true, nil
+		if canBeBuffered(reqParam, sqp) {
+			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, "Request Buffered"), true, nil
+		} else {
+			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, ""), false, nil
+		}
 	} else if clientErr.Error() == RESPONSE_NO_RESPONSE {
-		return getCustomResponse(protocol, http.StatusBadRequest, ""), false, nil
+		return getCustomResponse(reqParam.Protocol, http.StatusBadRequest, ""), false, nil
 	} else {
-		return getCustomResponse(protocol, http.StatusBadGateway, ""), false, nil
+		return getCustomResponse(reqParam.Protocol, http.StatusBadGateway, ""), false, nil
 	}
 }
 
@@ -250,6 +221,39 @@ func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Res
 		StatusCode: statusCode, Header: http.Header{"Content-Type": []string{"application/json"}},
 		Body :	    body,
 	}
+}
+
+func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) bool {
+
+	if (*sqp).EnableDeferredQ {
+
+		reqFormats := (*sqp).DeferredQRequestFormats
+
+		if reqFormats == nil || reqFormats[0] == "ALL" {
+			return true
+		}
+
+		for _, rf := range reqFormats {
+			satisfy := false
+			rfBrkUp := strings.Split(rf, " ")
+			if (0 < len(rfBrkUp) && reqParam.Method == rfBrkUp[0]) || (0 >= len(rfBrkUp)) {
+				satisfy = true
+				if (1 < len(rfBrkUp) && reqParam.RequestURI == rfBrkUp[1]) || (1 >= len(rfBrkUp)) {
+					satisfy = true
+					if 2 < len(rfBrkUp) && rfBrkUp[2] == "!" {
+						satisfy = false
+					}
+				} else {
+					satisfy = false
+				}
+			}
+			if satisfy {
+				return satisfy
+			}
+		}
+	}
+
+	return false
 }
 
 func optCloseConn(conn *net.Conn, reqParam model.RequestParam, customResHeaders []string) {

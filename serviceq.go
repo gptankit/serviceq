@@ -14,22 +14,17 @@ func main() {
 	if config, err := getConfiguration(getConfFileLocation()); err == nil {
 		sqp := assignProperties(config)
 
-		if listener, err := net.Listen("tcp", "localhost:"+sqp.ListenerPort); err == nil {
+		if listener, err := net.Listen("tcp", ":"+sqp.ListenerPort); err == nil {
 			defer listener.Close()
 
-			if len(sqp.ServiceList) > 0 {
+			cwork := make(chan int, sqp.MaxConcurrency+1)      // work done queue
+			creq := make(chan interface{}, sqp.MaxConcurrency) // request queue
 
-				cwork := make(chan int, sqp.MaxConcurrency+1)      // work done queue
-				creq := make(chan interface{}, sqp.MaxConcurrency) // request queue
+			// observe bufferred requests
+			go workBackground(creq, cwork, &sqp)
 
-				// observe bufferred requests
-				go workBackground(creq, cwork, &sqp)
-
-				// accept new connections
-				listenActive(listener, creq, cwork, &sqp)
-			} else {
-				fmt.Fprintf(os.Stderr, "No services listed, closing listener\n")
-			}
+			// accept new connections
+			listenActive(listener, creq, cwork, &sqp)
 		} else {
 			fmt.Fprintf(os.Stderr, "Could not listen to localhost:"+sqp.ListenerPort+" -- %s\n", err.Error())
 		}
@@ -81,7 +76,7 @@ func assignProperties(cfg model.Config) model.ServiceQProperties {
 		MaxConcurrency:          cfg.ConcurrencyPeak,
 		EnableDeferredQ:         cfg.EnableDeferredQ,
 		DeferredQRequestFormats: cfg.DeferredQRequestFormats,
-		MaxRetries:              (len(cfg.Endpoints) * 2) + 1,
+		MaxRetries:              len(cfg.Endpoints),
 		RetryGap:                cfg.RetryGap,
 		IdleGap:                 500,
 		RequestErrorLog:         make(map[string]int, len(cfg.Endpoints)),
