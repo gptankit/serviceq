@@ -5,9 +5,9 @@ ServiceQ is a TCP layer for parallel HTTP service deployments. It distributes lo
 Noticeable features -
 
 * HTTP Load Balancing<br/>
-* Randomized + Round Robin selection<br/>
 * Request retries with configurable interval<br/>
 * Failed request buffering and deferred forwarding<br/>
+* Heuristic Error Feedback+Round Robin selection<br/>
 * Concurrent connections limit<br/> 
 * Customizable balancer properties<br/>
 * Error based response<br/>
