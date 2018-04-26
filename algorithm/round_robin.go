@@ -4,7 +4,7 @@ import (
 	"math"
 )
 
-func RoundRobin(set int, choice int) int {
+func roundrobin(set int, choice int) int {
 
 	next := choice + 1
 

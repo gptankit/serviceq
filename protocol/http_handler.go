@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"algorithm"
 	"bytes"
 	"errorlog"
 	"errors"
@@ -10,7 +11,6 @@ import (
 	"model"
 	"net"
 	"net/http"
-	"netserve"
 	"os"
 	"strconv"
 	"strings"
@@ -58,7 +58,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 	if toBuffer {
 		creq <- reqParam
 		cwork <- 1
-		fmt.Printf("Request bufferred\n")
+		//fmt.Printf("Request bufferred\n")
 		forceCloseConn(conn)
 	} else {
 		optCloseConn(conn, reqParam, (*sqp).CustomResponseHeaders)
@@ -96,7 +96,7 @@ func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}
 	if toBuffer {
 		creq <- reqParam
 		cwork <- 1
-		fmt.Printf("Request bufferred\n")
+		//fmt.Printf("Request bufferred\n")
 	}
 
 	<-cwork
@@ -131,24 +131,23 @@ func saveReqParam(req *http.Request) model.RequestParam {
 func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*http.Response, bool, error) {
 
 	choice := -1
-	noOfServices := len((*sqp).ServiceList)
 	var clientErr error
 
 	for retry := 0; retry < (*sqp).MaxRetries; retry++ {
 
-		choice = netserve.ChooseServiceIndex(noOfServices, choice, retry)
+		choice = algorithm.ChooseServiceIndex(sqp, choice, retry)
 		upstrService := (*sqp).ServiceList[choice]
 
-		fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), upstrService.Host)
+		//fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), upstrService.Host)
 		// ping ip
-		if !netserve.IsTCPAlive(upstrService.Host) {
+		if !isTCPAlive(upstrService.Host) {
 			clientErr = errors.New(RESPONSE_SERVICE_DOWN)
 			errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
 			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
 			continue
 		}
 
-		fmt.Printf("->Forwarding to %s\n", upstrService.QualifiedUrl)
+		//fmt.Printf("->Forwarding to %s\n", upstrService.QualifiedUrl)
 
 		body := ioutil.NopCloser(bytes.NewReader(reqParam.BodyBuff))
 		upstrReq, _ := http.NewRequest(reqParam.Method, upstrService.QualifiedUrl+reqParam.RequestURI, body)

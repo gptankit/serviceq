@@ -1,11 +1,11 @@
-package netserve
+package protocol
 
 import (
 	"net"
 	"time"
 )
 
-func IsTCPAlive(service string) bool {
+func isTCPAlive(service string) bool {
 
 	dialTO := 1000
 	conn, err := net.DialTimeout("tcp", service, time.Duration(dialTO) * time.Millisecond)
