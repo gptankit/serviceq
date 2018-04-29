@@ -139,13 +139,14 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 		upstrService := (*sqp).ServiceList[choice]
 
 		//fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), upstrService.Host)
-		// ping ip
-		if !isTCPAlive(upstrService.Host) {
-			clientErr = errors.New(RESPONSE_SERVICE_DOWN)
-			errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
-			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
-			continue
-		}
+		// ping ip -- response/error flow below will take care of tcp connect
+
+		//if !isTCPAlive(upstrService.Host) {
+		//	clientErr = errors.New(RESPONSE_SERVICE_DOWN)
+		//	errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
+		//	time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
+		//	continue
+		//}
 
 		//fmt.Printf("->Forwarding to %s\n", upstrService.QualifiedUrl)
 
@@ -173,7 +174,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 			}
 			go errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, UPSTREAM_HTTP_ERR, clientErr.Error())
 			time.Sleep(time.Duration((*sqp).RetryGap) * time.Millisecond) // wait on error
-			break
+			continue
 		} else {
 			go errorlog.ResetErrorCount(sqp, upstrService.QualifiedUrl)
 			clientErr = nil
@@ -191,16 +192,14 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 
 func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *model.ServiceQProperties) (*http.Response, bool, error) {
 
-	if clientErr.Error() == RESPONSE_TIMED_OUT {
-		return getCustomResponse(reqParam.Protocol, http.StatusGatewayTimeout, ""), false, nil
-	} else if clientErr.Error() == RESPONSE_SERVICE_DOWN {
+	if clientErr.Error() == RESPONSE_NO_RESPONSE || clientErr.Error() == RESPONSE_TIMED_OUT {
 		if canBeBuffered(reqParam, sqp) {
 			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, "Request Buffered"), true, nil
 		} else {
 			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, ""), false, nil
 		}
-	} else if clientErr.Error() == RESPONSE_NO_RESPONSE {
-		return getCustomResponse(reqParam.Protocol, http.StatusBadRequest, ""), false, nil
+	} else if clientErr.Error() == RESPONSE_SERVICE_DOWN {
+		return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, ""), false, nil
 	} else {
 		return getCustomResponse(reqParam.Protocol, http.StatusBadGateway, ""), false, nil
 	}
