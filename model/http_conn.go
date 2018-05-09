@@ -11,17 +11,20 @@ import (
 
 type HTTPConnection struct {
 	tcpConn *net.Conn
+	reader *bufio.Reader
+	writer *bufio.Writer
 }
 
 func (httpConn *HTTPConnection) Enclose(tcpConn *net.Conn) {
 
 	httpConn.tcpConn = tcpConn
+	httpConn.reader = bufio.NewReader(*httpConn.tcpConn)
+	httpConn.writer = bufio.NewWriter(*httpConn.tcpConn)
 }
 
 func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 
-	reader := bufio.NewReader(*httpConn.tcpConn)
-	req, err := http.ReadRequest(reader)
+	req, err := http.ReadRequest(httpConn.reader)
 
 	if err == nil {
 		return req, nil
@@ -31,8 +34,6 @@ func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 }
 
 func (httpConn *HTTPConnection) WriteTo(res *http.Response, customHeaders []string) error {
-
-	writer := bufio.NewWriter(*httpConn.tcpConn)
 
 	var responseBody []byte
 	if res.Body != nil {
@@ -67,9 +68,9 @@ func (httpConn *HTTPConnection) WriteTo(res *http.Response, customHeaders []stri
 
 	clientRes := []byte(clientResStr)
 
-	_, err := writer.Write(clientRes) // tunneling onto tcp conn writer
+	_, err := httpConn.writer.Write(clientRes) // tunneling onto tcp conn writer
 	if err == nil {
-		writer.Flush()
+		httpConn.writer.Flush()
 		return nil
 	}
 

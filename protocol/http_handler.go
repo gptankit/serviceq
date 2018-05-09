@@ -35,36 +35,49 @@ const (
 
 func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
-	var res *http.Response
-	var reqParam model.RequestParam
-	var toBuffer bool
-
 	httpConn := model.HTTPConnection{}
 	httpConn.Enclose(conn)
-	req, err := httpConn.ReadFrom()
 
-	if err == nil {
-		reqParam = saveReqParam(req)
-		res, toBuffer, err = dialAndSend(reqParam, sqp)
-	}
+	keepAliveStart := time.Now()
 
-	if err == nil {
-		err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+	for {
+
+		var res *http.Response
+		var reqParam model.RequestParam
+		var toBuffer bool
+
+		// read from and write to conn
+		req, err := httpConn.ReadFrom()
+
+		if err == nil {
+			// add work
+			cwork <- 1
+
+			reqParam = saveReqParam(req)
+			res, toBuffer, err = dialAndSend(reqParam, sqp)
+
+			if err == nil {
+				err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+				}
+			}
+
+			// to buffer?
+			if toBuffer {
+				creq <- reqParam
+				cwork <- 1
+			}
+
+			// remove work
+			<-cwork
+		}
+
+		// check if a conn is to be closed
+		if optCloseConn(conn, reqParam, keepAliveStart, sqp) {
+			break
 		}
 	}
-
-	if toBuffer {
-		creq <- reqParam
-		cwork <- 1
-		//fmt.Printf("Request bufferred\n")
-		forceCloseConn(conn)
-	} else {
-		optCloseConn(conn, reqParam, (*sqp).CustomResponseHeaders)
-	}
-
-	<-cwork
 
 	return
 }
@@ -91,14 +104,16 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 
 func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
+	// send from buffer
 	_, toBuffer, _ := dialAndSend(reqParam, sqp)
 
+	// to buffer?
 	if toBuffer {
 		creq <- reqParam
 		cwork <- 1
-		//fmt.Printf("Request bufferred\n")
 	}
 
+	// remove work
 	<-cwork
 
 	return
@@ -208,15 +223,17 @@ func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *mod
 func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Response {
 
 	var body io.ReadCloser
+	var json string
 	if resMsg != "" {
-		json := `{"sq_msg":"` + resMsg +`"}`
+		json = `{"sq_msg":"` + resMsg +`"}`
 		body = ioutil.NopCloser(bytes.NewReader([]byte(json)))
 	}
+	jsonLen := strconv.Itoa(len(json))
 
 	return &http.Response{
 		Proto:      protocol,
 		Status:     strconv.Itoa(statusCode) + " " + http.StatusText(statusCode),
-		StatusCode: statusCode, Header: http.Header{"Content-Type": []string{"application/json"}},
+		StatusCode: statusCode, Header: http.Header{"Content-Type": []string{"application/json"}, "Content-Length": []string{jsonLen},},
 		Body :	    body,
 	}
 }
@@ -254,15 +271,12 @@ func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) b
 	return false
 }
 
-func optCloseConn(conn *net.Conn, reqParam model.RequestParam, customResHeaders []string) {
+func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveStart time.Time, sqp *model.ServiceQProperties) bool {
 
-	if reqParam.Headers == nil {
-		forceCloseConn(conn)
-	}
-
+	closingConn := false
 	keepAlive := false
-	if customResHeaders != nil {
-		for _, h := range customResHeaders {
+	if (*sqp).CustomResponseHeaders != nil {
+		for _, h := range (*sqp).CustomResponseHeaders {
 			h = strings.Replace(h, " ", "", -1)
 			if strings.Contains(h, "Connection:keep-alive") {
 				keepAlive = true
@@ -271,24 +285,31 @@ func optCloseConn(conn *net.Conn, reqParam model.RequestParam, customResHeaders 
 		}
 	}
 
-	if reqParam.Headers != nil {
+	if reqParam.Protocol == "HTTP/1.0" || reqParam.Protocol == "HTTP/1.1" { // Connection and keep-alive are ignored for http/2
 		if v, ok := reqParam.Headers["Connection"]; ok {
 			if v[0] == "keep-alive" && keepAlive {
-				// don't do anything
-			} else if v[0] == "close" || !keepAlive {
-				forceCloseConn(conn)
+			        closingConn = false// do not close conn
+			} else if v[0] == "close" || !keepAlive { // close conn if Connection: close or keep-alive is not part of response
+				return forceCloseConn(conn)
 			}
+		} else if reqParam.Protocol == "HTTP/1.1" && keepAlive {
+			closingConn = false// do not close conn if Connection header not found for protocol http/1.1 -- follow default behaviour
 		} else {
-			forceCloseConn(conn)
+			return forceCloseConn(conn)
 		}
 	}
 
-	return
+	if !closingConn &&
+		((*sqp).KeepAliveTimeout == 0 || ((*sqp).KeepAliveTimeout > 0 && int32(time.Since(keepAliveStart) / time.Millisecond) > (*sqp).KeepAliveTimeout)) {
+		return forceCloseConn(conn)
+	}
+
+	return false
 }
 
-func forceCloseConn(conn *net.Conn) {
+func forceCloseConn(conn *net.Conn) bool {
 
 	(*conn).Close()
 
-	return
+	return true
 }

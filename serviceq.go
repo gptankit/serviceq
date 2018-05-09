@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"model"
 	"net"
@@ -11,10 +13,9 @@ import (
 
 func main() {
 
-	if config, err := getConfiguration(getConfFileLocation()); err == nil {
-		sqp := assignProperties(config)
+	if sqp, err := getProperties(getPropertyFilePath()); err == nil {
 
-		if listener, err := net.Listen("tcp", ":"+sqp.ListenerPort); err == nil {
+		if listener, err := getListener(sqp); err == nil {
 			defer listener.Close()
 
 			cwork := make(chan int, sqp.MaxConcurrency+1)      // work done queue
@@ -26,10 +27,31 @@ func main() {
 			// accept new connections
 			listenActive(listener, creq, cwork, &sqp)
 		} else {
-			fmt.Fprintf(os.Stderr, "Could not listen to localhost:"+sqp.ListenerPort+" -- %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "Could not listen on :"+sqp.ListenerPort+" -- %s\n", err.Error())
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
+	}
+}
+
+func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
+
+	if sqp.SSLEnabled {
+		cert, err := tls.LoadX509KeyPair(sqp.SSLCertificateFile, sqp.SSLPrivateKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ServerName:   "serviceq",
+			Time:         time.Now,
+			Rand:         rand.Reader,
+		}
+		tlsConfig.BuildNameToCertificate()
+
+		return tls.Listen("tcp", ":"+sqp.ListenerPort, tlsConfig)
+	} else {
+		return net.Listen("tcp", ":"+sqp.ListenerPort)
 	}
 }
 
@@ -38,7 +60,6 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 	for {
 		if conn, err := listener.Accept(); err == nil {
 			if len(cwork) < cap(cwork)-1 {
-				cwork <- 1
 				if (*sqp).Proto == "http" {
 					go protocol.HandleHttpConnection(&conn, creq, cwork, sqp)
 				} else {
@@ -56,30 +77,13 @@ func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQPr
 
 	for {
 		if len(cwork) > 0 && len(creq) > 0 {
+			println(len(cwork))
+			println(len(creq))
 			if (*sqp).Proto == "http" {
 				go protocol.HandleHttpBufferedReader((<-creq).(model.RequestParam), creq, cwork, sqp)
 			}
 		} else {
 			time.Sleep(time.Duration((*sqp).IdleGap) * time.Millisecond) // wait for more work
 		}
-	}
-}
-
-func assignProperties(cfg model.Config) model.ServiceQProperties {
-
-	return model.ServiceQProperties{
-		ListenerPort:            cfg.ListenerPort,
-		Proto:                   cfg.Proto,
-		ServiceList:             cfg.Endpoints,
-		CustomRequestHeaders:    cfg.CustomRequestHeaders,
-		CustomResponseHeaders:   cfg.CustomResponseHeaders,
-		MaxConcurrency:          cfg.ConcurrencyPeak,
-		EnableDeferredQ:         cfg.EnableDeferredQ,
-		DeferredQRequestFormats: cfg.DeferredQRequestFormats,
-		MaxRetries:              len(cfg.Endpoints),
-		RetryGap:                cfg.RetryGap,
-		IdleGap:                 500,
-		RequestErrorLog:         make(map[string]int, len(cfg.Endpoints)),
-		OutRequestTimeout:       cfg.OutRequestTimeout,
 	}
 }

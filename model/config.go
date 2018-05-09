@@ -11,5 +11,8 @@ type Config struct {
 	DeferredQRequestFormats []string
 	RetryGap                int
 	OutRequestTimeout       int32
-	EnableProfilingFor      string
+	SSLEnabled		bool
+	SSLCertificateFile      string
+	SSLPrivateKeyFile	string
+	KeepAliveTimeout	int32
 }
