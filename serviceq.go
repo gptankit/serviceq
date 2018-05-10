@@ -31,6 +31,7 @@ func main() {
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
+
 	}
 }
 
@@ -44,11 +45,12 @@ func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			ServerName:   "serviceq",
+			NextProtos:   []string{"http/1.1", "http/1.0"},
 			Time:         time.Now,
 			Rand:         rand.Reader,
 		}
 		tlsConfig.BuildNameToCertificate()
-
+		tlsConfig.PreferServerCipherSuites = true
 		return tls.Listen("tcp", ":"+sqp.ListenerPort, tlsConfig)
 	} else {
 		return net.Listen("tcp", ":"+sqp.ListenerPort)
@@ -67,7 +69,7 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 					conn.Close()
 				}
 			} else {
-				protocol.DiscardHttpConnection(&conn, sqp)
+				go protocol.DiscardHttpConnection(&conn, sqp)
 			}
 		}
 	}
@@ -77,8 +79,6 @@ func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQPr
 
 	for {
 		if len(cwork) > 0 && len(creq) > 0 {
-			println(len(cwork))
-			println(len(creq))
 			if (*sqp).Proto == "http" {
 				go protocol.HandleHttpBufferedReader((<-creq).(model.RequestParam), creq, cwork, sqp)
 			}

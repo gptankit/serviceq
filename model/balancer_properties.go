@@ -22,5 +22,6 @@ type ServiceQProperties struct {
 	SSLCertificateFile	string
 	SSLPrivateKeyFile	string
 	KeepAliveTimeout        int32
+	KeepAliveServe		bool
 	REMutex                 sync.Mutex
 }

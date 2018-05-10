@@ -182,5 +182,19 @@ func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
 		SSLCertificateFile:      cfg.SSLCertificateFile,
 		SSLPrivateKeyFile:       cfg.SSLPrivateKeyFile,
 		KeepAliveTimeout:        cfg.KeepAliveTimeout,
+		KeepAliveServe:          keepAliveServe(cfg.CustomResponseHeaders),
 	}
+}
+
+func keepAliveServe(customResponseHeaders []string) bool {
+
+	if customResponseHeaders != nil {
+		for _, h := range customResponseHeaders {
+			h = strings.Replace(h, " ", "", -1)
+			if strings.Contains(h, "Connection:keep-alive") {
+				return true
+			}
+		}
+	}
+	return false
 }

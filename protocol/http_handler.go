@@ -74,7 +74,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 		}
 
 		// check if a conn is to be closed
-		if optCloseConn(conn, reqParam, keepAliveStart, sqp) {
+		if optCloseConn(conn, reqParam, keepAliveStart, sqp.KeepAliveServe, sqp.KeepAliveTimeout) {
 			break
 		}
 	}
@@ -89,14 +89,15 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 	httpConn.Enclose(conn)
 	req, err := httpConn.ReadFrom()
 
-	res = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
-	clientErr := errors.New(RESPONSE_FLOODED)
-	errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
-	err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+	if err == nil {
+		res = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
+		clientErr := errors.New(RESPONSE_FLOODED)
+		errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
+		err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+		}
 	}
-
 	forceCloseConn(conn)
 
 	return
@@ -271,36 +272,26 @@ func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) b
 	return false
 }
 
-func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveStart time.Time, sqp *model.ServiceQProperties) bool {
+func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveStart time.Time, keepAliveServe bool, keepAliveTimeout int32) bool {
 
 	closingConn := false
-	keepAlive := false
-	if (*sqp).CustomResponseHeaders != nil {
-		for _, h := range (*sqp).CustomResponseHeaders {
-			h = strings.Replace(h, " ", "", -1)
-			if strings.Contains(h, "Connection:keep-alive") {
-				keepAlive = true
-				break
-			}
-		}
-	}
-
 	if reqParam.Protocol == "HTTP/1.0" || reqParam.Protocol == "HTTP/1.1" { // Connection and keep-alive are ignored for http/2
 		if v, ok := reqParam.Headers["Connection"]; ok {
-			if v[0] == "keep-alive" && keepAlive {
+			if v[0] == "keep-alive" && keepAliveServe {
 			        closingConn = false// do not close conn
-			} else if v[0] == "close" || !keepAlive { // close conn if Connection: close or keep-alive is not part of response
+			} else if v[0] == "close" || !keepAliveServe { // close conn if Connection: close or keep-alive is not part of response
 				return forceCloseConn(conn)
 			}
-		} else if reqParam.Protocol == "HTTP/1.1" && keepAlive {
+		} else if reqParam.Protocol == "HTTP/1.1" && keepAliveServe {
 			closingConn = false// do not close conn if Connection header not found for protocol http/1.1 -- follow default behaviour
 		} else {
 			return forceCloseConn(conn)
 		}
 	}
 
+	// force close on keepalive timeout
 	if !closingConn &&
-		((*sqp).KeepAliveTimeout == 0 || ((*sqp).KeepAliveTimeout > 0 && int32(time.Since(keepAliveStart) / time.Millisecond) > (*sqp).KeepAliveTimeout)) {
+		(keepAliveTimeout == 0 || (keepAliveTimeout > 0 && int32(time.Since(keepAliveStart) / time.Millisecond) > keepAliveTimeout)) {
 		return forceCloseConn(conn)
 	}
 
