@@ -6,7 +6,7 @@ import (
 )
 
 type Properties struct {
-	c model.Config
+	c model.ServiceQProperties
 	e error
 }
 
@@ -15,9 +15,9 @@ var props Properties
 func TestReadConfiguration(t *testing.T) {
 
 	cfPath := "sq.properties"
-	cfg, err := getConfiguration(cfPath)
+	sqp, err := getProperties(cfPath)
 
-	props = Properties{c: cfg, e: err}
+	props = Properties{c: sqp, e: err}
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -32,10 +32,10 @@ func TestMandatoryProperties(t *testing.T) {
 		if props.c.Proto == "" {
 			t.Error("PROTO missing in sq.properties\n")
 		}
-		if len(props.c.Endpoints) == 0 {
+		if len(props.c.ServiceList) == 0 {
 			t.Error("ENDPOINTS missing in sq.properties\n")
 		}
-		if props.c.ConcurrencyPeak == 0 {
+		if props.c.MaxConcurrency == 0 {
 			t.Error("CONCURRENCY_PEAK missing in sq.properties\n")
 		}
 	}

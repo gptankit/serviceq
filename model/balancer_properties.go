@@ -18,5 +18,10 @@ type ServiceQProperties struct {
 	IdleGap                 int
 	RequestErrorLog         map[string]int
 	OutRequestTimeout       int32
+	SSLEnabled		bool
+	SSLCertificateFile	string
+	SSLPrivateKeyFile	string
+	KeepAliveTimeout        int32
+	KeepAliveServe		bool
 	REMutex                 sync.Mutex
 }

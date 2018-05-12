@@ -58,6 +58,11 @@ exec:
 	./$(BINARY_NAME)
 	@echo 'done'
 
+reload:
+	make
+	make install
+	sudo /opt/serviceq/serviceq
+
 # Cross compilation
 build-linux64:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX_64) -v

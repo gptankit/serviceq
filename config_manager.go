@@ -21,25 +21,30 @@ const (
 	SQP_K_DEFERRED_Q_REQUEST_FORMATS = "DEFERRED_Q_REQUEST_FORMATS"
 	SQP_K_RETRY_GAP                  = "RETRY_GAP"
 	SQP_K_OUT_REQUEST_TIMEOUT        = "OUTGOING_REQUEST_TIMEOUT"
-	SQP_K_ENABLE_PROFILING_FOR       = "ENABLE_PROFILING_FOR"
+	SQP_K_SSL_ENABLED                = "SSL_ENABLE"
+	SQP_K_SSL_CERTIFICATE_FILE       = "SSL_CERTIFICATE_FILE"
+	SQP_K_SSL_PRIVATE_KEY_FILE       = "SSL_PRIVATE_KEY_FILE"
+	SQP_K_KEEP_ALIVE_TIMEOUT         = "KEEP_ALIVE_TIMEOUT"
 
-	sqwd = "/opt/serviceq"
+	SQ_WD = "/opt/serviceq"
+	SQ_VER = "serviceq/0.2"
 )
 
-func getConfFileLocation() string {
+func getPropertyFilePath() string {
 
-	return sqwd + "/config/sq.properties"
+	return SQ_WD + "/config/sq.properties"
 }
 
-func getConfiguration(confFilePath string) (model.Config, error) {
+func getProperties(confFilePath string) (model.ServiceQProperties, error) {
 
 	confFileSize := 0
 	var cfg model.Config
+	var sqp model.ServiceQProperties
 
 	if fileStat, err := os.Stat(confFilePath); err == nil {
 		confFileSize = int(fileStat.Size())
 	} else {
-		return cfg, err
+		return sqp, err
 	}
 
 	if confFileSize > 0 {
@@ -61,13 +66,12 @@ func getConfiguration(confFilePath string) (model.Config, error) {
 				}
 			}
 		} else {
-			return cfg, err
+			return sqp, err
 		}
 	}
 
 	validate(cfg)
-
-	return cfg, nil
+	return getAssignedProperties(cfg), nil
 }
 
 func populate(cfg model.Config, kvpart []string) model.Config {
@@ -120,19 +124,32 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 		cfg.RetryGap = int(retryGapVal)
 		break
 	case SQP_K_OUT_REQUEST_TIMEOUT:
-		timeoutVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
-		cfg.OutRequestTimeout = int32(timeoutVal)
+		reqTimeOutVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
+		cfg.OutRequestTimeout = int32(reqTimeOutVal)
 		break
 	case SQP_K_RESPONSE_HEADERS:
 		vpart := strings.Split(kvpart[1], "|")
 		for _, s := range vpart {
 			if s != "" {
+				if strings.ToLower(s) == "server" {
+					s += ": " + SQ_VER
+				}
 				cfg.CustomResponseHeaders = append(cfg.CustomResponseHeaders, s)
 			}
 		}
 		break
-	case SQP_K_ENABLE_PROFILING_FOR:
-		cfg.EnableProfilingFor = kvpart[1]
+	case SQP_K_SSL_ENABLED:
+		cfg.SSLEnabled, _ = strconv.ParseBool(kvpart[1])
+		break
+	case SQP_K_SSL_CERTIFICATE_FILE:
+		cfg.SSLCertificateFile = kvpart[1]
+		break
+	case SQP_K_SSL_PRIVATE_KEY_FILE:
+		cfg.SSLPrivateKeyFile = kvpart[1]
+		break
+	case SQP_K_KEEP_ALIVE_TIMEOUT:
+		keepAliveTimeout, _ := strconv.ParseInt(kvpart[1], 10, 32)
+		cfg.KeepAliveTimeout = int32(keepAliveTimeout)
 		break
 	default:
 		break
@@ -147,4 +164,41 @@ func validate(cfg model.Config) {
 		fmt.Fprintf(os.Stderr, "Something wrong with sq.properties... exiting\n")
 		os.Exit(1)
 	}
+}
+
+func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
+
+	return model.ServiceQProperties{
+		ListenerPort:            cfg.ListenerPort,
+		Proto:                   cfg.Proto,
+		ServiceList:             cfg.Endpoints,
+		CustomRequestHeaders:    cfg.CustomRequestHeaders,
+		CustomResponseHeaders:   cfg.CustomResponseHeaders,
+		MaxConcurrency:          cfg.ConcurrencyPeak,
+		EnableDeferredQ:         cfg.EnableDeferredQ,
+		DeferredQRequestFormats: cfg.DeferredQRequestFormats,
+		MaxRetries:              len(cfg.Endpoints),
+		RetryGap:                cfg.RetryGap,
+		IdleGap:                 500,
+		RequestErrorLog:         make(map[string]int, len(cfg.Endpoints)),
+		OutRequestTimeout:       cfg.OutRequestTimeout,
+		SSLEnabled:              cfg.SSLEnabled,
+		SSLCertificateFile:      cfg.SSLCertificateFile,
+		SSLPrivateKeyFile:       cfg.SSLPrivateKeyFile,
+		KeepAliveTimeout:        cfg.KeepAliveTimeout,
+		KeepAliveServe:          keepAliveServe(cfg.CustomResponseHeaders),
+	}
+}
+
+func keepAliveServe(customResponseHeaders []string) bool {
+
+	if customResponseHeaders != nil {
+		for _, h := range customResponseHeaders {
+			h = strings.Replace(h, " ", "", -1)
+			if strings.Contains(h, "Connection:keep-alive") {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+func setTCPDeadline(conn *net.Conn, keepAliveTimeout int32) {
+
+	if keepAliveTimeout >= 0 {
+		(*conn).SetDeadline(time.Now().Add(time.Millisecond * time.Duration(keepAliveTimeout)))
+	}
+}
+
 func isTCPAlive(service string) bool {
 
 	dialTO := 5000

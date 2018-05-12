@@ -35,36 +35,51 @@ const (
 
 func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
-	var res *http.Response
-	var reqParam model.RequestParam
-	var toBuffer bool
-
 	httpConn := model.HTTPConnection{}
+	setTCPDeadline(conn, (*sqp).KeepAliveTimeout)
 	httpConn.Enclose(conn)
-	req, err := httpConn.ReadFrom()
 
-	if err == nil {
-		reqParam = saveReqParam(req)
-		res, toBuffer, err = dialAndSend(reqParam, sqp)
-	}
+	for {
 
-	if err == nil {
-		err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+		var res *http.Response
+		var reqParam model.RequestParam
+		var toBuffer bool
+
+		// read from and write to conn
+		req, err := httpConn.ReadFrom()
+
+		if err == nil {
+			// add work
+			cwork <- 1
+
+			reqParam = saveReqParam(req)
+			res, toBuffer, err = dialAndSend(reqParam, sqp)
+
+			if err == nil {
+				err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+				}
+			}
+
+			// to buffer?
+			if toBuffer {
+				creq <- reqParam
+				cwork <- 1
+			}
+
+			// remove work
+			<-cwork
+
+			// check if a conn is to be closed
+			if optCloseConn(conn, reqParam, sqp.KeepAliveServe) {
+				break
+			}
+		} else {
+			forceCloseConn(conn)
+			break
 		}
 	}
-
-	if toBuffer {
-		creq <- reqParam
-		cwork <- 1
-		//fmt.Printf("Request bufferred\n")
-		forceCloseConn(conn)
-	} else {
-		optCloseConn(conn, reqParam, (*sqp).CustomResponseHeaders)
-	}
-
-	<-cwork
 
 	return
 }
@@ -76,14 +91,15 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 	httpConn.Enclose(conn)
 	req, err := httpConn.ReadFrom()
 
-	res = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
-	clientErr := errors.New(RESPONSE_FLOODED)
-	errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
-	err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+	if err == nil {
+		res = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
+		clientErr := errors.New(RESPONSE_FLOODED)
+		errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
+		err = httpConn.WriteTo(res, (*sqp).CustomResponseHeaders)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+		}
 	}
-
 	forceCloseConn(conn)
 
 	return
@@ -91,14 +107,16 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 
 func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
+	// send from buffer
 	_, toBuffer, _ := dialAndSend(reqParam, sqp)
 
+	// to buffer?
 	if toBuffer {
 		creq <- reqParam
 		cwork <- 1
-		//fmt.Printf("Request bufferred\n")
 	}
 
+	// remove work
 	<-cwork
 
 	return
@@ -110,7 +128,12 @@ func saveReqParam(req *http.Request) model.RequestParam {
 
 	reqParam.Protocol = req.Proto
 	reqParam.Method = req.Method
-	reqParam.RequestURI = req.RequestURI
+
+	if req.URL.RawQuery != "" {
+		reqParam.RequestURI = req.URL.Path + "?" + req.URL.RawQuery
+	} else {
+		reqParam.RequestURI = req.URL.Path
+	}
 
 	if req.Body != nil {
 		if bodyBuff, err := ioutil.ReadAll(req.Body); err == nil {
@@ -158,6 +181,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 		if client == nil {
 			client = &http.Client{Timeout: time.Duration((*sqp).OutRequestTimeout) * time.Millisecond}
 		}
+
 		resp, err := client.Do(upstrReq)
 
 		// handle response
@@ -208,15 +232,17 @@ func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *mod
 func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Response {
 
 	var body io.ReadCloser
+	var json string
 	if resMsg != "" {
-		json := `{"sq_msg":"` + resMsg +`"}`
+		json = `{"sq_msg":"` + resMsg +`"}`
 		body = ioutil.NopCloser(bytes.NewReader([]byte(json)))
 	}
+	jsonLen := strconv.Itoa(len(json))
 
 	return &http.Response{
 		Proto:      protocol,
 		Status:     strconv.Itoa(statusCode) + " " + http.StatusText(statusCode),
-		StatusCode: statusCode, Header: http.Header{"Content-Type": []string{"application/json"}},
+		StatusCode: statusCode, Header: http.Header{"Content-Type": []string{"application/json"}, "Content-Length": []string{jsonLen},},
 		Body :	    body,
 	}
 }
@@ -254,41 +280,28 @@ func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) b
 	return false
 }
 
-func optCloseConn(conn *net.Conn, reqParam model.RequestParam, customResHeaders []string) {
+func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveServe bool) bool {
 
-	if reqParam.Headers == nil {
-		forceCloseConn(conn)
-	}
-
-	keepAlive := false
-	if customResHeaders != nil {
-		for _, h := range customResHeaders {
-			h = strings.Replace(h, " ", "", -1)
-			if strings.Contains(h, "Connection:keep-alive") {
-				keepAlive = true
-				break
-			}
-		}
-	}
-
-	if reqParam.Headers != nil {
+	if reqParam.Protocol == "HTTP/1.0" || reqParam.Protocol == "HTTP/1.1" { // Connection and keep-alive are ignored for http/2
 		if v, ok := reqParam.Headers["Connection"]; ok {
-			if v[0] == "keep-alive" && keepAlive {
-				// don't do anything
-			} else if v[0] == "close" || !keepAlive {
-				forceCloseConn(conn)
+			if v[0] == "keep-alive" && keepAliveServe {
+			        return false// do not close conn
+			} else if v[0] == "close" || !keepAliveServe { // close conn if Connection: close or keep-alive is not part of response
+				return forceCloseConn(conn)
 			}
+		} else if reqParam.Protocol == "HTTP/1.1" && keepAliveServe {
+			return false// do not close conn if Connection header not found for protocol http/1.1 -- follow default behaviour
 		} else {
-			forceCloseConn(conn)
+			return forceCloseConn(conn)
 		}
 	}
 
-	return
+	return false
 }
 
-func forceCloseConn(conn *net.Conn) {
+func forceCloseConn(conn *net.Conn) bool {
 
 	(*conn).Close()
 
-	return
+	return true
 }
