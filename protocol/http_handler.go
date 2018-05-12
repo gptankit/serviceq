@@ -36,9 +36,8 @@ const (
 func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	httpConn := model.HTTPConnection{}
+	setTCPDeadline(conn, (*sqp).KeepAliveTimeout)
 	httpConn.Enclose(conn)
-
-	keepAliveStart := time.Now()
 
 	for {
 
@@ -71,10 +70,13 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 
 			// remove work
 			<-cwork
-		}
 
-		// check if a conn is to be closed
-		if optCloseConn(conn, reqParam, keepAliveStart, sqp.KeepAliveServe, sqp.KeepAliveTimeout) {
+			// check if a conn is to be closed
+			if optCloseConn(conn, reqParam, sqp.KeepAliveServe) {
+				break
+			}
+		} else {
+			forceCloseConn(conn)
 			break
 		}
 	}
@@ -126,7 +128,12 @@ func saveReqParam(req *http.Request) model.RequestParam {
 
 	reqParam.Protocol = req.Proto
 	reqParam.Method = req.Method
-	reqParam.RequestURI = req.RequestURI
+
+	if req.URL.RawQuery != "" {
+		reqParam.RequestURI = req.URL.Path + "?" + req.URL.RawQuery
+	} else {
+		reqParam.RequestURI = req.URL.Path
+	}
 
 	if req.Body != nil {
 		if bodyBuff, err := ioutil.ReadAll(req.Body); err == nil {
@@ -174,6 +181,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 		if client == nil {
 			client = &http.Client{Timeout: time.Duration((*sqp).OutRequestTimeout) * time.Millisecond}
 		}
+
 		resp, err := client.Do(upstrReq)
 
 		// handle response
@@ -272,27 +280,20 @@ func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) b
 	return false
 }
 
-func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveStart time.Time, keepAliveServe bool, keepAliveTimeout int32) bool {
+func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveServe bool) bool {
 
-	closingConn := false
 	if reqParam.Protocol == "HTTP/1.0" || reqParam.Protocol == "HTTP/1.1" { // Connection and keep-alive are ignored for http/2
 		if v, ok := reqParam.Headers["Connection"]; ok {
 			if v[0] == "keep-alive" && keepAliveServe {
-			        closingConn = false// do not close conn
+			        return false// do not close conn
 			} else if v[0] == "close" || !keepAliveServe { // close conn if Connection: close or keep-alive is not part of response
 				return forceCloseConn(conn)
 			}
 		} else if reqParam.Protocol == "HTTP/1.1" && keepAliveServe {
-			closingConn = false// do not close conn if Connection header not found for protocol http/1.1 -- follow default behaviour
+			return false// do not close conn if Connection header not found for protocol http/1.1 -- follow default behaviour
 		} else {
 			return forceCloseConn(conn)
 		}
-	}
-
-	// force close on keepalive timeout
-	if !closingConn &&
-		(keepAliveTimeout == 0 || (keepAliveTimeout > 0 && int32(time.Since(keepAliveStart) / time.Millisecond) > keepAliveTimeout)) {
-		return forceCloseConn(conn)
 	}
 
 	return false

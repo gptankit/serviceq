@@ -26,12 +26,13 @@ const (
 	SQP_K_SSL_PRIVATE_KEY_FILE       = "SSL_PRIVATE_KEY_FILE"
 	SQP_K_KEEP_ALIVE_TIMEOUT         = "KEEP_ALIVE_TIMEOUT"
 
-	sqwd = "/opt/serviceq"
+	SQ_WD = "/opt/serviceq"
+	SQ_VER = "serviceq/0.2"
 )
 
 func getPropertyFilePath() string {
 
-	return sqwd + "/config/sq.properties"
+	return SQ_WD + "/config/sq.properties"
 }
 
 func getProperties(confFilePath string) (model.ServiceQProperties, error) {
@@ -130,6 +131,9 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 		vpart := strings.Split(kvpart[1], "|")
 		for _, s := range vpart {
 			if s != "" {
+				if strings.ToLower(s) == "server" {
+					s += ": " + SQ_VER
+				}
 				cfg.CustomResponseHeaders = append(cfg.CustomResponseHeaders, s)
 			}
 		}
