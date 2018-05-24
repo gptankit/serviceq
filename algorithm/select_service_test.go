@@ -13,7 +13,7 @@ func TestServiceIndexWithinBoundR1(t *testing.T) {
 		rt int
 	}{
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},
@@ -21,7 +21,7 @@ func TestServiceIndexWithinBoundR1(t *testing.T) {
 					5,
 					0},
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},
@@ -29,7 +29,7 @@ func TestServiceIndexWithinBoundR1(t *testing.T) {
 					8,
 					0},
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},
@@ -37,7 +37,7 @@ func TestServiceIndexWithinBoundR1(t *testing.T) {
 					1,
 					0},
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},
@@ -66,7 +66,7 @@ func TestServiceIndexWithinBoundRn(t *testing.T) {
 		rt int
 	}{
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},
@@ -74,7 +74,7 @@ func TestServiceIndexWithinBoundRn(t *testing.T) {
 					59,
 					3},
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},
@@ -82,7 +82,7 @@ func TestServiceIndexWithinBoundRn(t *testing.T) {
 					8,
 					2},
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},
@@ -90,7 +90,7 @@ func TestServiceIndexWithinBoundRn(t *testing.T) {
 					14,
 					-1},
 		{&model.ServiceQProperties{
-			RequestErrorLog: map[string]int{"s0": 1, "s1": 2},
+			RequestErrorLog: map[string]uint64{"s0": 1, "s1": 2},
 			ServiceList: []model.Endpoint{
 						model.Endpoint {QualifiedUrl:"s0"},
 						model.Endpoint {QualifiedUrl: "s1"},

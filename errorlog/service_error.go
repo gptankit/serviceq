@@ -20,16 +20,16 @@ func init() {
 func IncrementErrorCount(sqp *model.ServiceQProperties, service string, errType int, errReason string) {
 
 	(*sqp).REMutex.Lock()
-	defer (*sqp).REMutex.Unlock()
 	(*sqp).RequestErrorLog[service] += 1
+	(*sqp).REMutex.Unlock()
 	logServiceError(service, errType, errReason)
 }
 
 func ResetErrorCount(sqp *model.ServiceQProperties, service string) {
 
 	(*sqp).REMutex.Lock()
-	defer (*sqp).REMutex.Unlock()
 	(*sqp).RequestErrorLog[service] = 0
+	(*sqp).REMutex.Unlock()
 }
 
 func logServiceError(service string, errType int, errReason string) {

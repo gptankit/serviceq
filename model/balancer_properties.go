@@ -16,7 +16,7 @@ type ServiceQProperties struct {
 	MaxRetries              int
 	RetryGap                int
 	IdleGap                 int
-	RequestErrorLog         map[string]int
+	RequestErrorLog         map[string]uint64
 	OutRequestTimeout       int32
 	SSLEnabled		bool
 	SSLCertificateFile	string
