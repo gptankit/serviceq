@@ -8,7 +8,7 @@ import (
 func BenchmarkConcurrentErrorIncrements(b *testing.B) {
 
 	sqp := model.ServiceQProperties{}
-	sqp.RequestErrorLog = make(map[string]int, 1)
+	sqp.RequestErrorLog = make(map[string]uint64, 1)
 
 	sqp.RequestErrorLog["s0"] = 0
 
@@ -21,7 +21,7 @@ func BenchmarkConcurrentErrorIncrements(b *testing.B) {
 func BenchmarkSequentialErrorIncrements(b *testing.B) {
 
 	sqp := model.ServiceQProperties{}
-	sqp.RequestErrorLog = make(map[string]int, 1)
+	sqp.RequestErrorLog = make(map[string]uint64, 1)
 
 	sqp.RequestErrorLog["s0"] = 0
 

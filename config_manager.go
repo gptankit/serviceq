@@ -26,7 +26,7 @@ const (
 	SQP_K_SSL_PRIVATE_KEY_FILE       = "SSL_PRIVATE_KEY_FILE"
 	SQP_K_KEEP_ALIVE_TIMEOUT         = "KEEP_ALIVE_TIMEOUT"
 
-	SQ_WD = "/opt/serviceq"
+	SQ_WD  = "/opt/serviceq"
 	SQ_VER = "serviceq/0.2"
 )
 
@@ -180,7 +180,7 @@ func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
 		MaxRetries:              len(cfg.Endpoints),
 		RetryGap:                cfg.RetryGap,
 		IdleGap:                 500,
-		RequestErrorLog:         make(map[string]int, len(cfg.Endpoints)),
+		RequestErrorLog:         make(map[string]uint64, len(cfg.Endpoints)),
 		OutRequestTimeout:       cfg.OutRequestTimeout,
 		SSLEnabled:              cfg.SSLEnabled,
 		SSLCertificateFile:      cfg.SSLCertificateFile,

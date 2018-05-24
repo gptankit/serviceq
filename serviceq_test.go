@@ -10,35 +10,37 @@ func TestWorkAssigment(t *testing.T) {
 
 	// assumption -- all services are down
 
-	sqp := model.ServiceQProperties{}
-	sqp.ListenerPort = "5252"
-	sqp.Proto = "http"
-	sqp.ServiceList = []model.Endpoint{
-		{RawUrl: "http://example.org:2001", Scheme: "http", QualifiedUrl: "http://example.org:2001", Host: "example.org:2001"},
-		{RawUrl: "http://example.org:3001", Scheme: "http", QualifiedUrl: "http://example.org:3001", Host: "example.org:3001"},
-		{RawUrl: "http://example.org:4001", Scheme: "http", QualifiedUrl: "http://example.org:4001", Host: "example.org:4001"},
-		{RawUrl: "http://example.org:5001", Scheme: "http", QualifiedUrl: "http://example.org:5001", Host: "example.org:5001"},
+	sqp := model.ServiceQProperties{
+		ListenerPort: "5252",
+		Proto:        "http",
+		ServiceList: []model.Endpoint{
+			{RawUrl: "http://example.org:2001", Scheme: "http", QualifiedUrl: "http://example.org:2001", Host: "example.org:2001"},
+			{RawUrl: "http://example.org:3001", Scheme: "http", QualifiedUrl: "http://example.org:3001", Host: "example.org:3001"},
+			{RawUrl: "http://example.org:4001", Scheme: "http", QualifiedUrl: "http://example.org:4001", Host: "example.org:4001"},
+			{RawUrl: "http://example.org:5001", Scheme: "http", QualifiedUrl: "http://example.org:5001", Host: "example.org:5001"},
+		},
+		MaxConcurrency:          8, // if changing, do check value of duplicateWork
+		EnableDeferredQ:         true,
+		DeferredQRequestFormats: []string{"ALL"},
+		MaxRetries:              1,   // we know it's down
+		RetryGap:                0,   // ms
+		IdleGap:                 500, // ms
+		RequestErrorLog:         make(map[string]uint64, 2),
+		OutRequestTimeout:       300000,
 	}
-	sqp.MaxConcurrency = 8 // if changing, do check value of duplicateWork
-	sqp.EnableDeferredQ = true
-	sqp.DeferredQRequestFormats = []string{"ALL"}
-	sqp.MaxRetries = 1 // we know it's down
-	sqp.RetryGap = 0   // ms
-	sqp.IdleGap = 500  // ms
-	sqp.RequestErrorLog = make(map[string]int, 2)
-	sqp.OutRequestTimeout = 300000
 
 	cw := make(chan int, sqp.MaxConcurrency)
 	cr := make(chan interface{}, sqp.MaxConcurrency)
 
-	var reqParam model.RequestParam
-	reqParam.Protocol = "HTTP/1.1"
-	reqParam.Method = "GET"
-	reqParam.RequestURI = "/getRefund"
-	reqParam.Headers = make(map[string][]string, 1)
-	reqParam.Headers["Content-Type"] = []string{"application/json"}
-	reqParam.BodyBuff = nil
-
+	reqParam := model.RequestParam{
+		Protocol:   "HTTP/1.1",
+		Method:     "GET",
+		RequestURI: "/getRefund",
+		Headers: map[string][]string{
+			"Content-Type": []string{"application/json"},
+		},
+		BodyBuff: nil,
+	}
 	cr <- reqParam
 	cw <- 1
 
