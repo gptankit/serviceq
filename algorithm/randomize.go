@@ -16,3 +16,15 @@ func randomize(init int, set int) int {
 
 	return choice
 }
+
+func randomize64(init int64, set int64) int64 {
+
+	if set <= init {
+		return int64(0)
+	}
+
+	rand.Seed(time.Now().UTC().UnixNano())
+	choice := rand.Int63n(set - init) + init
+
+	return choice
+}
