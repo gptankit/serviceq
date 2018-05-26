@@ -43,15 +43,36 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 					prefixes[i] = weights[i] + prefixes[i-1]
 				}
 			}
-			randx := randomize(1, int(prefixes[len(prefixes) - 1]))
-			for i, n := range prefixes {
-				if int(n) >= randx {
-					return i
-					}
-				}
+			prLen := len(prefixes) - 1
+			randx := randomize64(1, int64(prefixes[prLen]))
+			ceil := findCeilIn(randx, prefixes, 0, prLen)
+			if ceil >= 0 {
+				return ceil
 			}
-			return randomize(0, noOfServices)
+		}
+		return randomize(0, noOfServices)
 	} else {
 		return roundrobin(noOfServices, initialChoice)
 	}
+}
+
+func findCeilIn(randx int64, prefixes []float64, start int, end int) int {
+
+	var mid int
+	for {
+		if start >= end {
+			break
+		}
+		mid = start + ((end - start) >> 1)
+		if randx > int64(prefixes[mid]) {
+			start = mid + 1
+		} else {
+			end = mid
+		}
+	}
+
+	if randx <= int64(prefixes[start]) {
+		return start
+	}
+	return -1
 }
