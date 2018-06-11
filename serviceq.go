@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/tls"
 	"fmt"
 	"model"
 	"net"
@@ -32,28 +30,6 @@ func main() {
 	} else {
 		fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
 
-	}
-}
-
-func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
-
-	if sqp.SSLEnabled {
-		cert, err := tls.LoadX509KeyPair(sqp.SSLCertificateFile, sqp.SSLPrivateKeyFile)
-		if err != nil {
-			return nil, err
-		}
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			ServerName:   "serviceq",
-			NextProtos:   []string{"http/1.1", "http/1.0"},
-			Time:         time.Now,
-			Rand:         rand.Reader,
-		}
-		tlsConfig.BuildNameToCertificate()
-		tlsConfig.PreferServerCipherSuites = true
-		return tls.Listen("tcp", ":"+sqp.ListenerPort, tlsConfig)
-	} else {
-		return net.Listen("tcp", ":"+sqp.ListenerPort)
 	}
 }
 
