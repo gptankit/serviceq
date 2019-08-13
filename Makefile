@@ -5,10 +5,10 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=serviceq
-BINARY_UNIX_64=$(BINARY_NAME)_unix_64
-BINARY_UNIX_32=$(BINARY_NAME)_unix_32
-BINARY_WINDOWS_64=$(BINARY_NAME)_win_64
-BINARY_WINDOWS_32=$(BINARY_NAME)_win_32
+BINARY_UNIX_64=$(BINARY_NAME)
+BINARY_UNIX_32=$(BINARY_NAME)
+BINARY_DARWIN_64=$(BINARY_NAME)
+BINARY_DARWIN_32=$(BINARY_NAME)
 
 all: build
 build: 
@@ -37,16 +37,16 @@ clean:
 	@echo 'done'
 
 install:
-	if [ ! -d /opt/serviceq ] ; then \
-		sudo mkdir /opt/serviceq; \
-		sudo mkdir /opt/serviceq/config; \
-		sudo mkdir /opt/serviceq/logs; \
+	if [ ! -d /usr/local/serviceq ] ; then \
+		sudo mkdir /usr/local/serviceq; \
+		sudo mkdir /usr/local/serviceq/config; \
+		sudo mkdir /usr/local/serviceq/logs; \
 	fi
-	sudo cp serviceq /opt/serviceq/
-	sudo cp sq.properties /opt/serviceq/config
-	sudo touch /opt/serviceq/logs/serviceq_error.log
+	sudo cp serviceq /usr/local/serviceq/
+	sudo cp sq.properties /usr/local/serviceq/config
+	sudo touch /usr/local/serviceq/logs/serviceq_error.log
 	sudo rm -f serviceq
-	@echo 'Binary location: /opt/serviceq/serviceq'
+	@echo 'Binary location: /usr/local/serviceq/serviceq'
 	@echo 'done'
 
 run:
@@ -70,10 +70,9 @@ build-linux64:
 build-linux32:
 	CGO_ENABLED=0 GOOS=linux GOARCH=386 $(GOBUILD) -o $(BINARY_UNIX_32) -v
 	@echo 'done'
-build-windows64:
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BINARY_WINDOWS_64) -v
+build-mac64:
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BINARY_DARWIN_64) -v
 	@echo 'done'
-build-windows32:
-	CGO_ENABLED=0 GOOS=windows GOARCH=386 $(GOBUILD) -o $(BINARY_WINDOWS_32) -v
+build-mac32:
+	CGO_ENABLED=0 GOOS=windows GOARCH=386 $(GOBUILD) -o $(BINARY_DARWIN_32) -v
 	@echo 'done'
-

@@ -22,11 +22,11 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 		slLen := len((*sqp).ServiceList)
 		for _, n := range (*sqp).ServiceList {
 			errCnt := (*sqp).RequestErrorLog[n.QualifiedUrl]
-			if errCnt >= maxErr {
-				maxErr = errCnt
+			effectiveErr := uint64(math.Floor(math.Pow(float64(1 + errCnt), 1.5)))
+			if effectiveErr >= maxErr {
+				maxErr = effectiveErr
 			}
 		}
-		maxErr = maxErr + 1 // increase by 1 in case of 0s
 		if maxErr == 1 {
 			return randomize(0, noOfServices)
 		} else {
@@ -44,7 +44,7 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 				}
 			}
 			prLen := len(prefixes) - 1
-			randx := randomize64(1, int64(prefixes[prLen]))
+			randx := randomize64(1, int64(prefixes[prLen]) + 1)
 			ceil := findCeilIn(randx, prefixes, 0, prLen)
 			if ceil >= 0 {
 				return ceil
