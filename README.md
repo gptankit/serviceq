@@ -39,7 +39,7 @@ Make sure the current user has root privileges, then - </br>
 
 <pre>$ make install</pre>
 
-This will create a folder <i>serviceq</i> in <i>/opt</i> directory and copy the generated <i>serviceq</i> binary to <i>/opt/serviceq</i> and <i>sq.properties</i> file (load balancer configuration) to <i>/opt/serviceq/config</i>.<br/>
+This will create a folder <i>serviceq</i> in <i>/usr/local</i> directory and copy the generated <i>serviceq</i> binary to <i>/usr/local/serviceq</i> and <i>sq.properties</i> file (load balancer configuration) to <i>/usr/local/serviceq/config</i>.<br/>
 
 <b>How to Run</b>
 
@@ -75,6 +75,6 @@ DEFERRED_Q_REQUEST_FORMATS=POST,PUT,PATCH,DELETE
 
 After all is set - </br>
 
-<pre>$ sudo /opt/serviceq/serviceq</pre>
+<pre>$ sudo /usr/local/serviceq/serviceq</pre>
 
 Feel free to play around and post feedbacks
