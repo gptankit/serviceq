@@ -1,6 +1,6 @@
 <h2>ServiceQ</h2>
 
-ServiceQ is a TCP layer for parallel HTTP service deployments. It distributes load across multiple endpoints and buffer requests on error (in scenarios of downtimes, service unavailability, connection loss etc). The buffered requests are forwarded in FIFO order when the service is available next.
+ServiceQ is an adaptive gateway for HTTP cluster deployments. It employs a probabilistic approach to distribute load and buffers requests during adverse scenarios (downtimes, service unavailability, connection loss etc). The buffered requests are forwarded in FIFO order when the service is available next.
 
 Noticeable features -
 
