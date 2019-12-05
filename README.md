@@ -18,7 +18,10 @@ Until I make <b>serviceq</b> available as a package download, here are the steps
 
 Clone the project into any directory in your workspace (say '<i>serviceq/src</i>')<br/>
 
-<pre>$ git clone https://github.com/gptankit/serviceq/</pre>
+<pre>
+$ mkdir serviceq && mkdir serviceq/src
+$ git clone https://github.com/gptankit/serviceq/ serviceq/src/
+</pre>
 
 Make sure GOPATH is pointing to <i>serviceq</i> directory<br/>
 Change into directory <i>serviceq/src</i><br/>
