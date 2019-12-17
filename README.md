@@ -1,16 +1,14 @@
 <h2>ServiceQ</h2>
 
-ServiceQ is an adaptive gateway for HTTP cluster deployments. It employs a probabilistic approach to distribute load and buffers requests during adverse scenarios (downtimes, service unavailability, connection loss etc). The buffered requests are forwarded in FIFO order when the service is available next.
+ServiceQ is an adaptive gateway for cluster deployments. It employs a probabilistic approach to distribute load and buffers requests during adverse cluster states (downtimes, service unavailability, connection loss etc). The buffered requests are forwarded in FIFO order when the cluster is available next.
 
 Noticeable features -
 
 * HTTP Load Balancing<br/>
-* Request retries with configurable interval<br/>
+* Probabilistic selection based on node error feedback<br/>
 * Failed request buffering and deferred forwarding<br/>
-* Heuristic Error Feedback+Round Robin selection<br/>
+* Request retries<br/>
 * Concurrent connections limit<br/> 
-* Customizable balancer properties<br/>
-* Error based response<br/>
 
 Until I make <b>serviceq</b> available as a package download, here are the steps to run the setup - </br>
 
