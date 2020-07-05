@@ -1,7 +1,7 @@
 package main
 
 import (
-	"model"
+	"github.com/gptankit/serviceq/model"
 	"testing"
 	"time"
 )

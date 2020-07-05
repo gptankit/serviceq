@@ -1,7 +1,7 @@
 package errorlog
 
 import (
-	"model"
+	"github.com/gptankit/serviceq/model"
 	"log"
 	"os"
 )

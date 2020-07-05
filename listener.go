@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"crypto/tls"
-	"model"
+	"github.com/gptankit/serviceq/model"
 	"net"
 	"time"
 )

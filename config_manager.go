@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"model"
+	"github.com/gptankit/serviceq/model"
 	"net/url"
 	"os"
 	"strconv"

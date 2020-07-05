@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"model"
+	"github.com/gptankit/serviceq/model"
 	"net"
 	"os"
-	"protocol"
+	"github.com/gptankit/serviceq/protocol"
 	"time"
 )
 

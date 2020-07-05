@@ -1,14 +1,14 @@
 package protocol
 
 import (
-	"algorithm"
+	"github.com/gptankit/serviceq/algorithm"
 	"bytes"
-	"errorlog"
+	"github.com/gptankit/serviceq/errorlog"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"model"
+	"github.com/gptankit/serviceq/model"
 	"net"
 	"net/http"
 	"os"

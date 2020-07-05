@@ -2,7 +2,7 @@ package algorithm
 
 import (
 	"testing"
-	"model"
+	"github.com/gptankit/serviceq/model"
 )
 
 func TestServiceIndexWithinBoundR1(t *testing.T) {
