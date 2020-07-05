@@ -1,4 +1,4 @@
-<h2>ServiceQ</h2>
+# ServiceQ [![Build Status](https://travis-ci.com/gptankit/serviceq.svg?branch=master)](https://travis-ci.com/gptankit/serviceq) [![GoDoc](https://godoc.org/github.com/gptankit/serviceq?status.svg)](https://pkg.go.dev/github.com/gptankit/serviceq?tab=subdirectories)
 
 ServiceQ is an adaptive gateway for cluster deployments. It employs a probabilistic approach to distribute load and buffers requests during adverse cluster states (downtimes, service unavailability, connection loss etc). The buffered requests are forwarded in FIFO order when the cluster is available next.
 
