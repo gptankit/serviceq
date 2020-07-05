@@ -5,14 +5,14 @@ ServiceQ is an adaptive gateway for cluster deployments. It employs a probabilis
 Noticeable features -
 
 * HTTP Load Balancing<br/>
-* Probabilistic selection based on node error feedback<br/>
+* Probabilistic node selection based on error feedback<br/>
 * Failed request buffering and deferred forwarding<br/>
 * Request retries<br/>
 * Concurrent connections limit<br/> 
 
 Here are the steps to run serviceq - </br>
 
-<b>Warm-up</b>
+<b>Download</b>
 
 Clone the project into any directory in your workspace (say '<i>serviceq</i>')<br/>
 
