@@ -10,19 +10,18 @@ Noticeable features -
 * Request retries<br/>
 * Concurrent connections limit<br/> 
 
-Until I make <b>serviceq</b> available as a package download, here are the steps to run the setup - </br>
+Here are the steps to run serviceq - </br>
 
 <b>Warm-up</b>
 
-Clone the project into any directory in your workspace (say '<i>serviceq/src</i>')<br/>
+Clone the project into any directory in your workspace (say '<i>serviceq</i>')<br/>
 
 <pre>
-$ mkdir serviceq && mkdir serviceq/src
-$ git clone https://github.com/gptankit/serviceq/ serviceq/src/
+$ mkdir serviceq
+$ git clone https://github.com/gptankit/serviceq serviceq/
 </pre>
 
-Make sure GOPATH is pointing to <i>serviceq</i> directory<br/>
-Change into directory <i>serviceq/src</i><br/>
+Change into directory <i>serviceq</i><br/>
 
 <b>How to Build</b>
 
