@@ -8,6 +8,7 @@ import (
 
 var logger *log.Logger
 
+// init opens the log file and creates a logger object.
 func init() {
 
 	logFileLocation := "/opt/serviceq/logs/serviceq_error.log"
@@ -17,6 +18,7 @@ func init() {
 	}
 }
 
+// IncrementErrorCount increments session error count and logs corresponding to service.
 func IncrementErrorCount(sqp *model.ServiceQProperties, service string, errType int, errReason string) {
 
 	(*sqp).REMutex.Lock()
@@ -25,6 +27,7 @@ func IncrementErrorCount(sqp *model.ServiceQProperties, service string, errType 
 	logServiceError(service, errType, errReason)
 }
 
+// ResetErrorCount resets session error count corresponding to service.
 func ResetErrorCount(sqp *model.ServiceQProperties, service string) {
 
 	(*sqp).REMutex.Lock()
@@ -32,6 +35,7 @@ func ResetErrorCount(sqp *model.ServiceQProperties, service string) {
 	(*sqp).REMutex.Unlock()
 }
 
+// logServiceError logs service error data (errType and errReason) in the log file. 
 func logServiceError(service string, errType int, errReason string) {
 
 	if logger != nil {

@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// getListener returns a new http(s) listener.
 func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
 
 	transport := "tcp"
@@ -22,6 +23,7 @@ func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
 	}
 }
 
+// newListener creates a new net.Listener object.
 func newListener(transport string, addr string, options ...func(*net.Listener) error) (net.Listener, error) {
 
 	listener, err := net.Listen(transport, addr)
@@ -39,6 +41,7 @@ func newListener(transport string, addr string, options ...func(*net.Listener) e
 	return listener, nil
 }
 
+// applyTLS upgrades non-TLS listener to TLS listener.
 func applyTLS(certificate string, key string) func(*net.Listener) error {
 
 	return func(l *net.Listener) error {

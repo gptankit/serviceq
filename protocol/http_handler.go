@@ -33,6 +33,9 @@ const (
 	RESPONSE_NO_RESPONSE  = "UPSTREAM_NO_RESPONSE"
 )
 
+// HandleHttpConnection reads from incoming http connection and attempts to forward it to downstream nodes by calling
+// dialAndSend(). It temporarily saves the request before forwarding, if needed for subsequent retries. This saved 
+// request can be buffered if dialAndSend() is unable to forward to any downstream nodes.
 func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	httpConn := model.HTTPConnection{}
@@ -84,6 +87,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 	return
 }
 
+// DiscardHttpConnection sets error response and discards upstream http connection.
 func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 
 	var res *http.Response
@@ -105,6 +109,7 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 	return
 }
 
+// HandleHttpBufferedReader retries buffered requests by calling dialAndSend().
 func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	// send from buffer
@@ -122,6 +127,7 @@ func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}
 	return
 }
 
+// saveReqParam parses and temporarily saves http request.
 func saveReqParam(req *http.Request) model.RequestParam {
 
 	var reqParam model.RequestParam
@@ -151,6 +157,9 @@ func saveReqParam(req *http.Request) model.RequestParam {
 	return reqParam
 }
 
+// dialAndSend forwards request to downstream node selected by algorithm.ChooseServiceIndex() and in case of 
+// error, increments the error count, and retries for a maximum (*sqp).MaxRetries times. If the request succeedes,
+// the coresponding node error count is reset. If the request fails on all nodes, it can be set to buffer.
 func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*http.Response, bool, error) {
 
 	choice := -1
@@ -214,6 +223,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (*h
 	return nil, true, errors.New("send-fail")
 }
 
+// checkErrorAndRespond sets error and buffer flag based on buffer config and type of error from downstream node.
 func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *model.ServiceQProperties) (*http.Response, bool, error) {
 
 	if clientErr.Error() == RESPONSE_NO_RESPONSE || clientErr.Error() == RESPONSE_TIMED_OUT {
@@ -229,6 +239,7 @@ func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *mod
 	}
 }
 
+// getCustomResponse creates a new http response with appropriates status code and response message.
 func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Response {
 
 	var body io.ReadCloser
@@ -247,6 +258,8 @@ func getCustomResponse(protocol string, statusCode int, resMsg string) *http.Res
 	}
 }
 
+// canBeBuffered determines whether a request is qualified for buffering based on buffer
+// config in sq.properties. Http method and uri are matched against buffer config.
 func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) bool {
 
 	if (*sqp).EnableDeferredQ {
@@ -280,6 +293,7 @@ func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) b
 	return false
 }
 
+// optCloseConn determines to optionally close a net.Conn object.
 func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveServe bool) bool {
 
 	if reqParam.Protocol == "HTTP/1.0" || reqParam.Protocol == "HTTP/1.1" { // Connection and keep-alive are ignored for http/2
@@ -299,6 +313,7 @@ func optCloseConn(conn *net.Conn, reqParam model.RequestParam, keepAliveServe bo
 	return false
 }
 
+// forceCloseConn force closes a net.Conn object.
 func forceCloseConn(conn *net.Conn) bool {
 
 	(*conn).Close()

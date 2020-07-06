@@ -5,6 +5,12 @@ import (
 	"github.com/gptankit/serviceq/model"
 )
 
+// ChooseServiceIndex implements the routing logic to the cluster of downstream nodes. On 
+// first try, an error log lookup is done to determine the node-wise error count and effective
+// error is calculated. If no error found for any nodes, random node selection (equal probability)
+// is done, else weighted random node selection is done, where weights are inversely proportional 
+// to error count on the particular nodes. If the request to the selected node fails, round robin
+// selection is done to deterministically select the next node.
 func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry int) int {
 
 	noOfServices := len((*sqp).ServiceList)
@@ -56,6 +62,8 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 	}
 }
 
+// findCeilIn does a binary search to find position of selected random
+// number and returns corresponding ceil index in prefixes array.
 func findCeilIn(randx int64, prefixes []float64, start int, end int) int {
 
 	var mid int

@@ -30,11 +30,13 @@ const (
 	SQ_VER = "serviceq/0.3"
 )
 
+// getPropertyFilePath returns path to sq.properties.
 func getPropertyFilePath() string {
 
 	return SQ_WD + "/config/sq.properties"
 }
 
+// getProperties transforms sq.properties into config model and validates it.
 func getProperties(confFilePath string) (model.ServiceQProperties, error) {
 
 	confFileSize := 0
@@ -74,6 +76,7 @@ func getProperties(confFilePath string) (model.ServiceQProperties, error) {
 	return getAssignedProperties(cfg), nil
 }
 
+// populate maps key/value pairs in sq.properties to corresponding config fields.
 func populate(cfg model.Config, kvpart []string) model.Config {
 
 	switch kvpart[0] {
@@ -158,6 +161,7 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 	return cfg
 }
 
+// validate does a mandatory fields check on sq.properties.
 func validate(cfg model.Config) {
 
 	if cfg.Proto == "" || cfg.ListenerPort == "" || len(cfg.Endpoints) == 0 || cfg.ConcurrencyPeak <= 0 {
@@ -166,6 +170,8 @@ func validate(cfg model.Config) {
 	}
 }
 
+// getAssignedProperties returns a new model.ServiceQProperties object 
+// with configs mapped from sq.properties and other default config values.
 func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
 
 	return model.ServiceQProperties{
@@ -190,6 +196,7 @@ func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
 	}
 }
 
+// keepAliveServe returns whether to use keep-alive or not.
 func keepAliveServe(customResponseHeaders []string) bool {
 
 	if customResponseHeaders != nil {

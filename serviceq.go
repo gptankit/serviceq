@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// main sets up serviceq properties, initializes work done and request buffers,
+// and starts routines to accept new connections and observe buffered requests.
 func main() {
 
 	if sqp, err := getProperties(getPropertyFilePath()); err == nil {
@@ -19,7 +21,7 @@ func main() {
 			cwork := make(chan int, sqp.MaxConcurrency+1)      // work done queue
 			creq := make(chan interface{}, sqp.MaxConcurrency) // request queue
 
-			// observe bufferred requests
+			// observe buffered requests
 			go workBackground(creq, cwork, &sqp)
 
 			// accept new connections
@@ -33,6 +35,7 @@ func main() {
 	}
 }
 
+// listenActive forwards new requests to the cluster.
 func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	for {
@@ -51,6 +54,7 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 	}
 }
 
+// workBackground forwards buffered requests to the cluster.
 func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	for {

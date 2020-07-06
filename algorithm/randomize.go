@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// randomize implements randomized selection where init is 
+// lower selection limit and set is total selection space.
 func randomize(init int, set int) int {
 
 	if set <= init {
@@ -17,6 +19,7 @@ func randomize(init int, set int) int {
 	return choice
 }
 
+// randomize64 is a 64-bit version of randomize().
 func randomize64(init int64, set int64) int64 {
 
 	if set <= init {

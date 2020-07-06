@@ -9,12 +9,15 @@ import (
 	"strings"
 )
 
+// HTTPConnection is a http connection object that holds underlying 
+// tcp connection with reader and writer to that connection.
 type HTTPConnection struct {
 	tcpConn *net.Conn
 	reader *bufio.Reader
 	writer *bufio.Writer
 }
 
+// Enclose initializes new http reader/writer to underlying tcp connection.
 func (httpConn *HTTPConnection) Enclose(tcpConn *net.Conn) {
 
 	httpConn.tcpConn = tcpConn
@@ -22,6 +25,7 @@ func (httpConn *HTTPConnection) Enclose(tcpConn *net.Conn) {
 	httpConn.writer = bufio.NewWriter(*httpConn.tcpConn)
 }
 
+// ReadFrom reads http request from reader.
 func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 
 	req, err := http.ReadRequest(httpConn.reader)
@@ -33,6 +37,7 @@ func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 	return nil, errors.New("read-fail")
 }
 
+// WriteTo writes http response to writer (in http format).
 func (httpConn *HTTPConnection) WriteTo(res *http.Response, customHeaders []string) error {
 
 	var responseBody []byte
