@@ -5,12 +5,12 @@ import (
 	"github.com/gptankit/serviceq/model"
 )
 
-// ChooseServiceIndex implements the routing logic to the cluster of downstream nodes. On 
-// first try, an error log lookup is done to determine the node-wise error count and effective
-// error is calculated. If no error found for any nodes, random node selection (equal probability)
-// is done, else weighted random node selection is done, where weights are inversely proportional 
-// to error count on the particular nodes. If the request to the selected node fails, round robin
-// selection is done to deterministically select the next node.
+// ChooseServiceIndex implements the routing logic to the cluster of downstream services. On 
+// first try, an error log lookup is done to determine the service-wise error count and effective
+// error is calculated. If no error found for any service, random service selection (equal probability)
+// is done, else weighted random service selection is done, where weights are inversely proportional 
+// to error count on the particular service. If the request to the selected service fails, round robin
+// selection is done to deterministically select the next service.
 func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry int) int {
 
 	noOfServices := len((*sqp).ServiceList)
@@ -25,7 +25,6 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 		(*sqp).REMutex.Lock()
 		defer (*sqp).REMutex.Unlock()
 		maxErr := uint64(0)
-		slLen := len((*sqp).ServiceList)
 		for _, n := range (*sqp).ServiceList {
 			errCnt := (*sqp).RequestErrorLog[n.QualifiedUrl]
 			effectiveErr := uint64(math.Floor(math.Pow(float64(1 + errCnt), 1.5)))
@@ -36,8 +35,8 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 		if maxErr == 1 {
 			return randomize(0, noOfServices)
 		} else {
-			weights := make([]float64, slLen)
-			prefixes := make([]float64, slLen)
+			weights := make([]float64, noOfServices)
+			prefixes := make([]float64, noOfServices)
 			for i, n := range (*sqp).ServiceList {
 				errCnt := (*sqp).RequestErrorLog[n.QualifiedUrl]
 				weights[i] = math.Ceil(float64(maxErr) / float64(errCnt + 1))
@@ -49,7 +48,7 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 					prefixes[i] = weights[i] + prefixes[i-1]
 				}
 			}
-			prLen := len(prefixes) - 1
+			prLen := noOfServices - 1
 			randx := randomize64(1, int64(prefixes[prLen]) + 1)
 			ceil := findCeilIn(randx, prefixes, 0, prLen)
 			if ceil >= 0 {
