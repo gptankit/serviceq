@@ -27,7 +27,7 @@ const (
 	SQP_K_KEEP_ALIVE_TIMEOUT         = "KEEP_ALIVE_TIMEOUT"
 
 	SQ_WD  = "/usr/local/serviceq"
-	SQ_VER = "serviceq/0.3"
+	SQ_VER = "serviceq/0.4"
 )
 
 // getPropertyFilePath returns path to sq.properties.
