@@ -26,7 +26,7 @@ func TestWorkAssigment(t *testing.T) {
 		RetryGap:                0,   // ms
 		IdleGap:                 500, // ms
 		RequestErrorLog:         make(map[string]uint64, 2),
-		OutRequestTimeout:       300000,
+		OutRequestTimeout:       1,
 	}
 
 	cw := make(chan int, sqp.MaxConcurrency)

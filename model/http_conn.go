@@ -3,7 +3,6 @@ package model
 import (
 	"bufio"
 	"errors"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -38,21 +37,13 @@ func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 }
 
 // WriteTo writes http response to writer (in http format).
-func (httpConn *HTTPConnection) WriteTo(res *http.Response, customHeaders []string) error {
+func (httpConn *HTTPConnection) WriteTo(res ResponseParam, customHeaders []string) error {
 
-	var responseBody []byte
-	if res.Body != nil {
-		responseBody, _ = ioutil.ReadAll(res.Body)
-		res.Body.Close()
-	}
-
-	responseProtocol := res.Proto
 	responseHeaders := ""
-	responseStatus := res.Status
 
 	// add original response headers
-	if res.Header != nil {
-		for k, v := range res.Header {
+	if res.Headers != nil {
+		for k, v := range res.Headers {
 			responseHeaders += k + ": " + strings.Join(v, ",") + "\n"
 		}
 	}
@@ -66,10 +57,10 @@ func (httpConn *HTTPConnection) WriteTo(res *http.Response, customHeaders []stri
 
 	if responseHeaders != "" {
 		responseHeaders = responseHeaders[:len(responseHeaders)-1]
-		responseStatus = responseStatus + "\n"
+		res.Status = res.Status + "\n"
 	}
 
-	clientResStr := responseProtocol + " " + responseStatus + responseHeaders + "\n\n" + string(responseBody)
+	clientResStr := res.Protocol + " " + res.Status + responseHeaders + "\n\n" + string(res.BodyBuff)
 
 	clientRes := []byte(clientResStr)
 

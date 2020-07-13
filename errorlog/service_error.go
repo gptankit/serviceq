@@ -11,7 +11,7 @@ var logger *log.Logger
 // init opens the log file and creates a logger object.
 func init() {
 
-	logFileLocation := "/opt/serviceq/logs/serviceq_error.log"
+	logFileLocation := "/usr/local/serviceq/logs/serviceq_error.log"
 	file, err := os.OpenFile(logFileLocation, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err == nil {
 		logger = log.New(file, "ServiceQ: ", log.Ldate | log.Ltime)
