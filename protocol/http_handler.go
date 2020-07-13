@@ -13,10 +13,21 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 var client *http.Client
+var once sync.Once
+
+func init() {
+
+	client = &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:    200,
+			IdleConnTimeout: 30 * time.Second},
+	}
+}
 
 const (
 	SERVICEQ_NO_ERR      = 600
@@ -184,16 +195,9 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 		downstrReq, _ := http.NewRequest(reqParam.Method, downstrService.QualifiedUrl+reqParam.RequestURI, body)
 		downstrReq.Header = reqParam.Headers
 
-		// do http call
-		if client == nil {
-			client = &http.Client{
-				Timeout: time.Duration((*sqp).OutRequestTimeout) * time.Second,
-				Transport: &http.Transport{
-					MaxIdleConns:    200,
-					IdleConnTimeout: 30 * time.Second},
-			}
-		}
-
+		once.Do(func() {
+			client.Timeout = time.Duration((*sqp).OutRequestTimeout) * time.Second
+		})
 		resp, err := client.Do(downstrReq)
 
 		// handle response
