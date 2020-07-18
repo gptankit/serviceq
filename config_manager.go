@@ -11,20 +11,24 @@ import (
 )
 
 const (
-	SQP_K_LISTENER_PORT              = "LISTENER_PORT"
-	SQP_K_PROTOCOL                   = "PROTO"
-	SQP_K_ENDPOINTS                  = "ENDPOINTS"
-	SQP_K_REQUEST_HEADERS            = "CUSTOM_REQUEST_HEADERS"
-	SQP_K_RESPONSE_HEADERS           = "CUSTOM_RESPONSE_HEADERS"
-	SQP_K_MAX_CONCURRENT_CONNS       = "CONCURRENCY_PEAK"
-	SQP_K_ENABLE_DEFERRED_Q          = "ENABLE_DEFERRED_Q"
-	SQP_K_DEFERRED_Q_REQUEST_FORMATS = "DEFERRED_Q_REQUEST_FORMATS"
-	SQP_K_RETRY_GAP                  = "RETRY_GAP"
-	SQP_K_OUT_REQUEST_TIMEOUT        = "OUTGOING_REQUEST_TIMEOUT"
-	SQP_K_SSL_ENABLED                = "SSL_ENABLE"
-	SQP_K_SSL_CERTIFICATE_FILE       = "SSL_CERTIFICATE_FILE"
-	SQP_K_SSL_PRIVATE_KEY_FILE       = "SSL_PRIVATE_KEY_FILE"
-	SQP_K_KEEP_ALIVE_TIMEOUT         = "KEEP_ALIVE_TIMEOUT"
+	SQP_K_LISTENER_PORT                 = "LISTENER_PORT"
+	SQP_K_PROTOCOL                      = "PROTO"
+	SQP_K_ENDPOINTS                     = "ENDPOINTS"
+	SQP_K_REQUEST_HEADERS               = "CUSTOM_REQUEST_HEADERS"
+	SQP_K_RESPONSE_HEADERS              = "CUSTOM_RESPONSE_HEADERS"
+	SQP_K_MAX_CONCURRENT_CONNS          = "CONCURRENCY_PEAK"
+	SQP_K_ENABLE_DEFERRED_Q             = "ENABLE_DEFERRED_Q"
+	SQP_K_DEFERRED_Q_REQUEST_FORMATS    = "DEFERRED_Q_REQUEST_FORMATS"
+	SQP_K_RETRY_GAP                     = "RETRY_GAP"
+	SQP_K_OUT_REQUEST_TIMEOUT           = "OUTGOING_REQUEST_TIMEOUT"
+	SQP_K_SSL_ENABLED                   = "SSL_ENABLE"
+	SQP_K_SSL_CERTIFICATE_FILE          = "SSL_CERTIFICATE_FILE"
+	SQP_K_SSL_PRIVATE_KEY_FILE          = "SSL_PRIVATE_KEY_FILE"
+	SQP_K_SSL_AUTO_ENABLED              = "SSL_AUTO_ENABLE"
+	SQP_K_SSL_AUTO_ENABLED_EMAIL        = "SSL_AUTO_ENABLE_EMAIL"
+	SQP_K_SSL_AUTO_ENABLED_DOMAINS      = "SSL_AUTO_ENABLE_DOMAIN_NAMES"
+	SQP_K_SSL_AUTO_ENABLED_RENEW_BEFORE = "SSL_AUTO_ENABLE_RENEW_BEFORE"
+	SQP_K_KEEP_ALIVE_TIMEOUT            = "KEEP_ALIVE_TIMEOUT"
 
 	SQ_WD  = "/usr/local/serviceq"
 	SQ_VER = "serviceq/0.4"
@@ -150,6 +154,19 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 	case SQP_K_SSL_PRIVATE_KEY_FILE:
 		cfg.SSLPrivateKeyFile = kvpart[1]
 		break
+	case SQP_K_SSL_AUTO_ENABLED:
+		cfg.SSLAutoEnabled, _ = strconv.ParseBool(kvpart[1])
+		break
+	case SQP_K_SSL_AUTO_ENABLED_EMAIL:
+		cfg.SSLAutoEnabledEmail = kvpart[1]
+		break
+	case SQP_K_SSL_AUTO_ENABLED_DOMAINS:
+		cfg.SSLAutoEnabledDomains = kvpart[1]
+		break
+	case SQP_K_SSL_AUTO_ENABLED_RENEW_BEFORE:
+		autoCertRenewBefore, _ := strconv.ParseInt(kvpart[1], 10, 32)
+		cfg.SSLAutoEnabledRenewBefore = int32(autoCertRenewBefore)
+		break
 	case SQP_K_KEEP_ALIVE_TIMEOUT:
 		keepAliveTimeout, _ := strconv.ParseInt(kvpart[1], 10, 32)
 		cfg.KeepAliveTimeout = int32(keepAliveTimeout)
@@ -170,29 +187,33 @@ func validate(cfg model.Config) {
 	}
 }
 
-// getAssignedProperties returns a new model.ServiceQProperties object 
+// getAssignedProperties returns a new model.ServiceQProperties object
 // with configs mapped from sq.properties and other default config values.
 func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
 
 	return model.ServiceQProperties{
-		ListenerPort:            cfg.ListenerPort,
-		Proto:                   cfg.Proto,
-		ServiceList:             cfg.Endpoints,
-		CustomRequestHeaders:    cfg.CustomRequestHeaders,
-		CustomResponseHeaders:   cfg.CustomResponseHeaders,
-		MaxConcurrency:          cfg.ConcurrencyPeak,
-		EnableDeferredQ:         cfg.EnableDeferredQ,
-		DeferredQRequestFormats: cfg.DeferredQRequestFormats,
-		MaxRetries:              len(cfg.Endpoints),
-		RetryGap:                cfg.RetryGap,
-		IdleGap:                 500,
-		RequestErrorLog:         make(map[string]uint64, len(cfg.Endpoints)),
-		OutRequestTimeout:       cfg.OutRequestTimeout,
-		SSLEnabled:              cfg.SSLEnabled,
-		SSLCertificateFile:      cfg.SSLCertificateFile,
-		SSLPrivateKeyFile:       cfg.SSLPrivateKeyFile,
-		KeepAliveTimeout:        cfg.KeepAliveTimeout,
-		KeepAliveServe:          keepAliveServe(cfg.CustomResponseHeaders),
+		ListenerPort:              cfg.ListenerPort,
+		Proto:                     cfg.Proto,
+		ServiceList:               cfg.Endpoints,
+		CustomRequestHeaders:      cfg.CustomRequestHeaders,
+		CustomResponseHeaders:     cfg.CustomResponseHeaders,
+		MaxConcurrency:            cfg.ConcurrencyPeak,
+		EnableDeferredQ:           cfg.EnableDeferredQ,
+		DeferredQRequestFormats:   cfg.DeferredQRequestFormats,
+		MaxRetries:                len(cfg.Endpoints),
+		RetryGap:                  cfg.RetryGap,
+		IdleGap:                   500,
+		RequestErrorLog:           make(map[string]uint64, len(cfg.Endpoints)),
+		OutRequestTimeout:         cfg.OutRequestTimeout,
+		SSLEnabled:                cfg.SSLEnabled,
+		SSLCertificateFile:        cfg.SSLCertificateFile,
+		SSLPrivateKeyFile:         cfg.SSLPrivateKeyFile,
+		SSLAutoEnabled:            cfg.SSLAutoEnabled,
+		SSLAutoEnabledEmail:       cfg.SSLAutoEnabledEmail,
+		SSLAutoEnabledDomains:     cfg.SSLAutoEnabledDomains,
+		SSLAutoEnabledRenewBefore: cfg.SSLAutoEnabledRenewBefore,
+		KeepAliveTimeout:          cfg.KeepAliveTimeout,
+		KeepAliveServe:            keepAliveServe(cfg.CustomResponseHeaders),
 	}
 }
 

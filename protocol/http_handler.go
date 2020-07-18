@@ -171,7 +171,7 @@ func saveReqParam(req *http.Request) model.RequestParam {
 func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (model.ResponseParam, bool, error) {
 
 	choice := -1
-	var clientErr error
+	var nodeErr error
 
 	for retry := 0; retry < (*sqp).MaxRetries; retry++ {
 
@@ -202,23 +202,16 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 
 		// handle response
 		if resp == nil || err != nil {
-			clientErr = err
-			if clientErr != nil {
-				if e, ok := clientErr.(net.Error); ok && e.Timeout() {
-					clientErr = errors.New(RESPONSE_TIMED_OUT)
-				} else {
-					clientErr = errors.New(RESPONSE_NO_RESPONSE)
-				}
-			} else {
-				clientErr = errors.New(RESPONSE_NO_RESPONSE)
-			}
-			go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, DOWNSTREAM_HTTP_ERR, clientErr.Error())
+			nodeErr = evalError(err)
+			go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, DOWNSTREAM_HTTP_ERR, nodeErr.Error())
+
 			time.Sleep(time.Duration((*sqp).RetryGap) * time.Second) // wait on error
 			continue
 		} else {
+			nodeErr = nil
 			go errorlog.ResetErrorCount(sqp, downstrService.QualifiedUrl)
-			clientErr = nil
 
+			// prepare response
 			responseParam := model.ResponseParam{}
 			responseParam.Protocol = resp.Proto
 			responseParam.Status = resp.Status
@@ -232,11 +225,28 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 	}
 
 	// error based response
-	if clientErr != nil {
-		return checkErrorAndRespond(clientErr, reqParam, sqp)
+	if nodeErr != nil {
+		return checkErrorAndRespond(nodeErr, reqParam, sqp)
 	}
 
 	return model.ResponseParam{}, true, errors.New("send-fail")
+}
+
+// evalError evaluates the type of errors from from downstream node.
+func evalError(err error) error {
+
+	nodeErr := err
+	if nodeErr != nil {
+		if e, ok := nodeErr.(net.Error); ok && e.Timeout() {
+			nodeErr = errors.New(RESPONSE_TIMED_OUT)
+		} else {
+			nodeErr = errors.New(RESPONSE_NO_RESPONSE)
+		}
+	} else {
+		nodeErr = errors.New(RESPONSE_NO_RESPONSE)
+	}
+
+	return nodeErr
 }
 
 // checkErrorAndRespond sets error and buffer flag based on buffer config and type of error from downstream node.
