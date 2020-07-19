@@ -17,9 +17,10 @@ func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
 
 	fmt.Println(sqp.SSLEnabled)
 	fmt.Println(sqp.SSLAutoEnabled)
-	fmt.Println(sqp.SSLAutoEnabledEmail)
-	fmt.Println(sqp.SSLAutoEnabledDomains)
-	fmt.Println(sqp.SSLAutoEnabledRenewBefore)
+	fmt.Println(sqp.SSLAutoCertificateDir)
+	fmt.Println(sqp.SSLAutoEmail)
+	fmt.Println(sqp.SSLAutoDomains)
+	fmt.Println(sqp.SSLAutoRenewBefore)
 
 	transport := "tcp"
 	addr := ":" + sqp.ListenerPort
@@ -32,7 +33,7 @@ func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
 
 	if sqp.SSLAutoEnabled {
 		fmt.Println("creating tls auto listener")
-		return newListener(transport, addr, applyTLSAuto())
+		return newListener(transport, addr, applyTLSAuto(sqp.SSLAutoCertificateDir, sqp.SSLAutoEmail, sqp.SSLAutoDomains, sqp.SSLAutoRenewBefore))
 	} else {
 		fmt.Println("creating tls standard listener")
 		return newListener(transport, addr, applyTLS(certificate, key))
@@ -82,32 +83,22 @@ func applyTLS(certificate string, key string) func(*net.Listener) error {
 	}
 }
 
-func applyTLSAuto() func(*net.Listener) error {
+func applyTLSAuto(certDir string, email string, domains string, renewBefore int32) func(*net.Listener) error {
 
 	return func(l *net.Listener) error {
 
-		/*
-		hostPolicy := func(ctx context.Context, host string) error {
-			fmt.Println(host)
-			allowedHost := "local.dev.io"
-			if host == allowedHost {
-				return nil
-			}
-			return fmt.Errorf("acme/autocert: only %s host is allowed", allowedHost)
-		}
-		*/
-
 		certManager := autocert.Manager{
-			Prompt:     autocert.AcceptTOS,
-			Cache:      autocert.DirCache("/etc/ssl/certs"),
-			HostPolicy: autocert.HostWhitelist("local.dev.io"),
-			//HostPolicy: hostPolicy,
+			Prompt:      autocert.AcceptTOS,
+			Cache:       autocert.DirCache(certDir),
+			HostPolicy:  autocert.HostWhitelist(domains),
+			Email:       email,
+			RenewBefore: time.Duration(renewBefore) * time.Hour * 24,
 		}
 
 		tlsConfig := &tls.Config{
 			GetCertificate: certManager.GetCertificate,
 			ServerName:     "serviceq",
-			NextProtos:     []string{"tls-alpn-01", "http/1.1", "http/1.0"},
+			NextProtos:     []string{"http-01", "http/1.1", "http/1.0"},
 			Time:           time.Now,
 			Rand:           rand.Reader,
 		}

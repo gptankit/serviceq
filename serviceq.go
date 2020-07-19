@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/gptankit/serviceq/model"
+	"github.com/gptankit/serviceq/protocol"
 	"net"
 	"os"
-	"github.com/gptankit/serviceq/protocol"
 	"time"
 )
 
@@ -41,7 +41,7 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 	for {
 		if conn, err := listener.Accept(); err == nil {
 			if len(cwork) < cap(cwork)-1 {
-				if (*sqp).Proto == "http" {
+				if sqp.Proto == "http" {
 					go protocol.HandleHttpConnection(&conn, creq, cwork, sqp)
 				} else {
 					<-cwork
@@ -59,11 +59,11 @@ func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQPr
 
 	for {
 		if len(cwork) > 0 && len(creq) > 0 {
-			if (*sqp).Proto == "http" {
+			if sqp.Proto == "http" {
 				go protocol.HandleHttpBufferedReader((<-creq).(model.RequestParam), creq, cwork, sqp)
 			}
 		} else {
-			time.Sleep(time.Duration((*sqp).IdleGap) * time.Millisecond) // wait for more work
+			time.Sleep(time.Duration(sqp.IdleGap) * time.Millisecond) // wait for more work
 		}
 	}
 }

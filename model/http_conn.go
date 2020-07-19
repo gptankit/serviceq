@@ -3,17 +3,18 @@ package model
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
 )
 
-// HTTPConnection is a http connection object that holds underlying 
+// HTTPConnection is a http connection object that holds underlying
 // tcp connection with reader and writer to that connection.
 type HTTPConnection struct {
 	tcpConn *net.Conn
-	reader *bufio.Reader
-	writer *bufio.Writer
+	reader  *bufio.Reader
+	writer  *bufio.Writer
 }
 
 // Enclose initializes new http reader/writer to underlying tcp connection.
@@ -32,6 +33,9 @@ func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 	if err == nil {
 		return req, nil
 	}
+
+	fmt.Println("read-failed")
+	fmt.Println(err.Error())
 
 	return nil, errors.New("read-fail")
 }

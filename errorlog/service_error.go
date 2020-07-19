@@ -14,28 +14,28 @@ func init() {
 	logFileLocation := "/usr/local/serviceq/logs/serviceq_error.log"
 	file, err := os.OpenFile(logFileLocation, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err == nil {
-		logger = log.New(file, "ServiceQ: ", log.Ldate | log.Ltime)
+		logger = log.New(file, "ServiceQ: ", log.Ldate|log.Ltime)
 	}
 }
 
 // IncrementErrorCount increments session error count and logs corresponding to service.
 func IncrementErrorCount(sqp *model.ServiceQProperties, service string, errType int, errReason string) {
 
-	(*sqp).REMutex.Lock()
-	(*sqp).RequestErrorLog[service] += 1
-	(*sqp).REMutex.Unlock()
+	sqp.REMutex.Lock()
+	sqp.RequestErrorLog[service] += 1
+	sqp.REMutex.Unlock()
 	logServiceError(service, errType, errReason)
 }
 
 // ResetErrorCount resets session error count corresponding to service.
 func ResetErrorCount(sqp *model.ServiceQProperties, service string) {
 
-	(*sqp).REMutex.Lock()
-	(*sqp).RequestErrorLog[service] = 0
-	(*sqp).REMutex.Unlock()
+	sqp.REMutex.Lock()
+	sqp.RequestErrorLog[service] = 0
+	sqp.REMutex.Unlock()
 }
 
-// logServiceError logs service error data (errType and errReason) in the log file. 
+// logServiceError logs service error data (errType and errReason) in the log file.
 func logServiceError(service string, errType int, errReason string) {
 
 	if logger != nil {

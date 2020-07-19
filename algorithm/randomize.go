@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// randomize implements randomized selection where init is 
+// randomize implements randomized selection where init is
 // lower selection limit and set is total selection space.
 func randomize(init int, set int) int {
 
@@ -14,7 +14,7 @@ func randomize(init int, set int) int {
 	}
 
 	rand.Seed(time.Now().UTC().UnixNano())
-	choice := rand.Intn(set - init) + init
+	choice := rand.Intn(set-init) + init
 
 	return choice
 }
@@ -27,7 +27,7 @@ func randomize64(init int64, set int64) int64 {
 	}
 
 	rand.Seed(time.Now().UTC().UnixNano())
-	choice := rand.Int63n(set - init) + init
+	choice := rand.Int63n(set-init) + init
 
 	return choice
 }

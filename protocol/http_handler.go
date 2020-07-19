@@ -48,7 +48,7 @@ const (
 func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	httpConn := model.HTTPConnection{}
-	setTCPDeadline(conn, (*sqp).KeepAliveTimeout)
+	setTCPDeadline(conn, sqp.KeepAliveTimeout)
 	httpConn.Enclose(conn)
 
 	for {
@@ -67,7 +67,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 			reqParam = saveReqParam(req)
 			resParam, toBuffer, err = dialAndSend(reqParam, sqp)
 			if err == nil {
-				err = httpConn.WriteTo(resParam, (*sqp).CustomResponseHeaders)
+				err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
 				}
@@ -107,7 +107,7 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 		resParam = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
 		clientErr := errors.New(RESPONSE_FLOODED)
 		errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
-		err = httpConn.WriteTo(resParam, (*sqp).CustomResponseHeaders)
+		err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
 		}
@@ -166,17 +166,17 @@ func saveReqParam(req *http.Request) model.RequestParam {
 }
 
 // dialAndSend forwards request to downstream node selected by algorithm.ChooseServiceIndex() and in case of
-// error, increments the error count, and retries for a maximum (*sqp).MaxRetries times. If the request succeedes,
+// error, increments the error count, and retries for a maximum sqp.MaxRetries times. If the request succeedes,
 // the coresponding node error count is reset. If the request fails on all nodes, it can be set to buffer.
 func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (model.ResponseParam, bool, error) {
 
 	choice := -1
 	var nodeErr error
 
-	for retry := 0; retry < (*sqp).MaxRetries; retry++ {
+	for retry := 0; retry < sqp.MaxRetries; retry++ {
 
 		choice = algorithm.ChooseServiceIndex(sqp, choice, retry)
-		downstrService := (*sqp).ServiceList[choice]
+		downstrService := sqp.ServiceList[choice]
 
 		// fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), downstrService.Host)
 
@@ -185,7 +185,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 			if !isTCPAlive(downstrService.Host) {
 				clientErr = errors.New(RESPONSE_SERVICE_DOWN)
 				errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
-				time.Sleep(time.Duration((*sqp).RetryGap) * time.Second) // wait on error
+				time.Sleep(time.Duration(sqp.RetryGap) * time.Second) // wait on error
 				continue
 			}*/
 
@@ -196,7 +196,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 		downstrReq.Header = reqParam.Headers
 
 		once.Do(func() {
-			client.Timeout = time.Duration((*sqp).OutRequestTimeout) * time.Second
+			client.Timeout = time.Duration(sqp.OutRequestTimeout) * time.Second
 		})
 		resp, err := client.Do(downstrReq)
 
@@ -205,7 +205,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 			nodeErr = evalError(err)
 			go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, DOWNSTREAM_HTTP_ERR, nodeErr.Error())
 
-			time.Sleep(time.Duration((*sqp).RetryGap) * time.Second) // wait on error
+			time.Sleep(time.Duration(sqp.RetryGap) * time.Second) // wait on error
 			continue
 		} else {
 			nodeErr = nil
@@ -288,9 +288,9 @@ func getCustomResponse(protocol string, statusCode int, resMsg string) model.Res
 // config in sq.properties. Http method and uri are matched against buffer config.
 func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) bool {
 
-	if (*sqp).EnableDeferredQ {
+	if sqp.EnableDeferredQ {
 
-		reqFormats := (*sqp).DeferredQRequestFormats
+		reqFormats := sqp.DeferredQRequestFormats
 
 		if reqFormats == nil || reqFormats[0] == "ALL" {
 			return true
