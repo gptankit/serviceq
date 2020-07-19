@@ -61,7 +61,7 @@ exec:
 reload:
 	make
 	make install
-	sudo /opt/serviceq/serviceq
+	sudo /usr/local/serviceq/serviceq
 
 # Cross compilation
 build-linux64:
