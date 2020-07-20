@@ -35,6 +35,14 @@ func ResetErrorCount(sqp *model.ServiceQProperties, service string) {
 	sqp.REMutex.Unlock()
 }
 
+// LogGenericError logs any given error data in the log file.
+func LogGenericError(errData string) {
+
+	if logger != nil {
+		logger.Printf("%s", errData)
+	}
+}
+
 // logServiceError logs service error data (errType and errReason) in the log file.
 func logServiceError(service string, errType int, errReason string) {
 

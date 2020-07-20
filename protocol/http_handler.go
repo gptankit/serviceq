@@ -3,14 +3,12 @@ package protocol
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/gptankit/serviceq/algorithm"
 	"github.com/gptankit/serviceq/errorlog"
 	"github.com/gptankit/serviceq/model"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,19 +30,19 @@ func init() {
 const (
 	SERVICEQ_NO_ERR      = 600
 	SERVICEQ_FLOODED_ERR = 601
-	DOWNSTREAM_NO_ERR    = 700
-	DOWNSTREAM_TCP_ERR   = 701
-	DOWNSTREAM_HTTP_ERR  = 702
+	UPSTREAM_NO_ERR      = 700
+	UPSTREAM_TCP_ERR     = 701
+	UPSTREAM_HTTP_ERR    = 702
 
 	RESPONSE_FLOODED      = "SERVICEQ_FLOODED"
-	RESPONSE_TIMED_OUT    = "DOWNSTREAM_TIMED_OUT"
-	RESPONSE_SERVICE_DOWN = "DOWNSTREAM_DOWN"
-	RESPONSE_NO_RESPONSE  = "DOWNSTREAM_NO_RESPONSE"
+	RESPONSE_TIMED_OUT    = "UPSTREAM_TIMED_OUT"
+	RESPONSE_SERVICE_DOWN = "UPSTREAM_DOWN"
+	RESPONSE_NO_RESPONSE  = "UPSTREAM_NO_RESPONSE"
 )
 
-// HandleHttpConnection reads from incoming http connection and attempts to forward it to downstream nodes by calling
+// HandleHttpConnection reads from incoming http connection and attempts to forward it to upstream nodes by calling
 // dialAndSend(). It temporarily saves the request before forwarding, if needed for subsequent retries. This saved
-// request can be buffered if dialAndSend() is unable to forward to any downstream nodes.
+// request can be buffered if dialAndSend() is unable to forward to any upstream nodes.
 func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	httpConn := model.HTTPConnection{}
@@ -69,7 +67,8 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 			if err == nil {
 				err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+					//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+					go errorlog.LogGenericError("Error on writing to client conn")
 				}
 			}
 
@@ -87,6 +86,8 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 				break
 			}
 		} else {
+			//fmt.Fprintf(os.Stderr, "Error on reading from client conn\n")
+			go errorlog.LogGenericError("Error on reading from client conn")
 			forceCloseConn(conn)
 			break
 		}
@@ -95,7 +96,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 	return
 }
 
-// DiscardHttpConnection sets error response and discards upstream http connection.
+// DiscardHttpConnection sets error response and discards client http connection.
 func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 
 	var resParam model.ResponseParam
@@ -106,12 +107,15 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 	if err == nil {
 		resParam = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
 		clientErr := errors.New(RESPONSE_FLOODED)
-		errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
+		go errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
 		err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+			//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+			go errorlog.LogGenericError("Error on writing to client conn")
 		}
 	}
+
+	go errorlog.LogGenericError("Error on reading from client conn")
 	forceCloseConn(conn)
 
 	return
@@ -165,7 +169,7 @@ func saveReqParam(req *http.Request) model.RequestParam {
 	return reqParam
 }
 
-// dialAndSend forwards request to downstream node selected by algorithm.ChooseServiceIndex() and in case of
+// dialAndSend forwards request to upstream node selected by algorithm.ChooseServiceIndex() and in case of
 // error, increments the error count, and retries for a maximum sqp.MaxRetries times. If the request succeedes,
 // the coresponding node error count is reset. If the request fails on all nodes, it can be set to buffer.
 func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (model.ResponseParam, bool, error) {
@@ -184,7 +188,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 		/*
 			if !isTCPAlive(downstrService.Host) {
 				clientErr = errors.New(RESPONSE_SERVICE_DOWN)
-				errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
+				go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
 				time.Sleep(time.Duration(sqp.RetryGap) * time.Second) // wait on error
 				continue
 			}*/
@@ -203,7 +207,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 		// handle response
 		if resp == nil || err != nil {
 			nodeErr = evalError(err)
-			go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, DOWNSTREAM_HTTP_ERR, nodeErr.Error())
+			go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, UPSTREAM_HTTP_ERR, nodeErr.Error())
 
 			time.Sleep(time.Duration(sqp.RetryGap) * time.Second) // wait on error
 			continue
@@ -232,7 +236,7 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 	return model.ResponseParam{}, true, errors.New("send-fail")
 }
 
-// evalError evaluates the type of errors from from downstream node.
+// evalError evaluates the type of errors from upstream node.
 func evalError(err error) error {
 
 	nodeErr := err
@@ -249,7 +253,7 @@ func evalError(err error) error {
 	return nodeErr
 }
 
-// checkErrorAndRespond sets error and buffer flag based on buffer config and type of error from downstream node.
+// checkErrorAndRespond sets error and buffer flag based on buffer config and type of error from upstream node.
 func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *model.ServiceQProperties) (model.ResponseParam, bool, error) {
 
 	if clientErr.Error() == RESPONSE_NO_RESPONSE || clientErr.Error() == RESPONSE_TIMED_OUT {

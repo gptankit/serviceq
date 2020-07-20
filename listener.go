@@ -47,7 +47,7 @@ func newListener(transport string, addr string, options ...func(*net.Listener) e
 	return listener, nil
 }
 
-// applyTLS upgrades non-TLS listener to TLS listener.
+// applyTLS upgrades non-TLS listener to TLS listener with user-provided ssl certificate and key.
 func applyTLS(certificate string, key string) func(*net.Listener) error {
 
 	return func(l *net.Listener) error {
@@ -72,6 +72,7 @@ func applyTLS(certificate string, key string) func(*net.Listener) error {
 	}
 }
 
+// applyTLSAuto upgrades non-TLS listener to TLS listener with automatic ssl management.
 func applyTLSAuto(certDir string, email string, domains string, renewBefore int32) func(*net.Listener) error {
 
 	return func(l *net.Listener) error {

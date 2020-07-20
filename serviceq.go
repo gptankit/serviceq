@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"github.com/gptankit/serviceq/errorlog"
 	"github.com/gptankit/serviceq/model"
 	"github.com/gptankit/serviceq/protocol"
 	"net"
-	"os"
 	"time"
 )
 
@@ -27,11 +26,12 @@ func main() {
 			// accept new connections
 			listenActive(listener, creq, cwork, &sqp)
 		} else {
-			fmt.Fprintf(os.Stderr, "Could not listen on :"+sqp.ListenerPort+" -- %s\n", err.Error())
+			//fmt.Fprintf(os.Stderr, "Could not listen on :"+sqp.ListenerPort+" -- %s\n", err.Error())
+			go errorlog.LogGenericError("Could not listen on :" + sqp.ListenerPort + " -- " + err.Error())
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
-
+		//fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
+		go errorlog.LogGenericError("Could not read sq.properties, closing listener -- " + err.Error())
 	}
 }
 

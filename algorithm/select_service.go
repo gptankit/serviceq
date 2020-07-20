@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-// ChooseServiceIndex implements the routing logic to the cluster of downstream services. On
+// ChooseServiceIndex implements the routing logic to the cluster of upstream services. On
 // first try, an error log lookup is done to determine the service-wise error count and effective
 // error is calculated. If no error found for any service, random service selection (equal probability)
 // is done, else weighted random service selection is done, where weights are inversely proportional
