@@ -3,7 +3,6 @@ package model
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -33,9 +32,6 @@ func (httpConn *HTTPConnection) ReadFrom() (*http.Request, error) {
 	if err == nil {
 		return req, nil
 	}
-
-	fmt.Println("read-failed")
-	fmt.Println(err.Error())
 
 	return nil, errors.New("read-fail")
 }

@@ -1,12 +1,10 @@
 package main
 
 import (
-	_ "context"
 	"crypto/rand"
 	"crypto/tls"
-	"fmt"
 	"github.com/gptankit/serviceq/model"
-	_ "golang.org/x/crypto/acme"
+	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 	"net"
 	"time"
@@ -14,13 +12,6 @@ import (
 
 // getListener returns a new http(s) listener.
 func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
-
-	fmt.Println(sqp.SSLEnabled)
-	fmt.Println(sqp.SSLAutoEnabled)
-	fmt.Println(sqp.SSLAutoCertificateDir)
-	fmt.Println(sqp.SSLAutoEmail)
-	fmt.Println(sqp.SSLAutoDomains)
-	fmt.Println(sqp.SSLAutoRenewBefore)
 
 	transport := "tcp"
 	addr := ":" + sqp.ListenerPort
@@ -32,10 +23,8 @@ func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
 	}
 
 	if sqp.SSLAutoEnabled {
-		fmt.Println("creating tls auto listener")
 		return newListener(transport, addr, applyTLSAuto(sqp.SSLAutoCertificateDir, sqp.SSLAutoEmail, sqp.SSLAutoDomains, sqp.SSLAutoRenewBefore))
 	} else {
-		fmt.Println("creating tls standard listener")
 		return newListener(transport, addr, applyTLS(certificate, key))
 	}
 }
@@ -98,7 +87,7 @@ func applyTLSAuto(certDir string, email string, domains string, renewBefore int3
 		tlsConfig := &tls.Config{
 			GetCertificate: certManager.GetCertificate,
 			ServerName:     "serviceq",
-			NextProtos:     []string{"http-01", "http/1.1", "http/1.0"},
+			NextProtos:     []string{"http/1.1", "http/1.0", acme.ALPNProto},
 			Time:           time.Now,
 			Rand:           rand.Reader,
 		}

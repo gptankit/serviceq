@@ -88,6 +88,7 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 
 	case SQP_K_LISTENER_PORT:
 		cfg.ListenerPort = kvpart[1]
+		fmt.Printf("serviceq listening on port> %s\n", cfg.ListenerPort)
 		break
 	case SQP_K_PROTOCOL:
 		cfg.Proto = kvpart[1]
@@ -114,12 +115,12 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 			endpoint.QualifiedUrl = s + port
 			endpoint.Host = uri.Host + port
 			cfg.Endpoints = append(cfg.Endpoints, endpoint)
-			fmt.Printf("Service Addr> %s\n", endpoint.QualifiedUrl)
+			fmt.Printf("service addr> %s\n", endpoint.QualifiedUrl)
 		}
 		break
 	case SQP_K_MAX_CONCURRENT_CONNS:
 		cfg.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
-		fmt.Printf("Concurreny Peak> %d\n", cfg.ConcurrencyPeak)
+		fmt.Printf("concurreny peak> %d\n", cfg.ConcurrencyPeak)
 		break
 	case SQP_K_ENABLE_DEFERRED_Q:
 		cfg.EnableDeferredQ, _ = strconv.ParseBool(kvpart[1])
@@ -148,6 +149,7 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 		break
 	case SQP_K_SSL_ENABLED:
 		cfg.SSLEnabled, _ = strconv.ParseBool(kvpart[1])
+		fmt.Printf("ssl enabled> %t\n", cfg.SSLEnabled)
 		break
 	case SQP_K_SSL_CERTIFICATE_FILE:
 		cfg.SSLCertificateFile = kvpart[1]
@@ -157,6 +159,7 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 		break
 	case SQP_K_SSL_AUTO_ENABLED:
 		cfg.SSLAutoEnabled, _ = strconv.ParseBool(kvpart[1])
+		fmt.Printf("sslauto enabled> %t\n", cfg.SSLAutoEnabled)
 		break
 	case SQP_K_SSL_AUTO_CERTIFICATE_DIR:
 		cfg.SSLAutoCertificateDir = kvpart[1]
