@@ -9,6 +9,7 @@ Noticeable features -
 * Failed request buffering and deferred forwarding<br/>
 * Request retries<br/>
 * Concurrent connections limit<br/>
+* Complete SSL support (automatic and manual)
 
 Here are the steps to run ServiceQ - </br>
 
