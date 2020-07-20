@@ -61,6 +61,7 @@ func applyTLS(certificate string, key string) func(*net.Listener) error {
 			Certificates: []tls.Certificate{cert},
 			ServerName:   "serviceq",
 			NextProtos:   []string{"http/1.1", "http/1.0"},
+			MinVersion:   tls.VersionTLS12,
 			Time:         time.Now,
 			Rand:         rand.Reader,
 		}
@@ -89,6 +90,7 @@ func applyTLSAuto(certDir string, email string, domains string, renewBefore int3
 			GetCertificate: certManager.GetCertificate,
 			ServerName:     "serviceq",
 			NextProtos:     []string{"http/1.1", "http/1.0", acme.ALPNProto},
+			MinVersion:     tls.VersionTLS12,
 			Time:           time.Now,
 			Rand:           rand.Reader,
 		}
