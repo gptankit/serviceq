@@ -2,13 +2,13 @@
 
 ServiceQ is a fault-tolerant gateway for HTTP clusters. It employs probabilistic routing to distribute load during partial cluster shutdown (k/n nodes experiencing downtimes, timeouts, connection loss etc) and buffers requests during total cluster shutdown (n nodes down). The buffered requests are forwarded in FIFO order when the cluster is available next.
 
-Below graph shows the routing probability (P) on a down node (D) in a 8-node cluster with respect to number of requests (r). Notice how quickly the probability reduces as and when the incoming requests on D starts to fail. Depending on the rate of request, it will only take a few seconds (sometimes even milliseconds) to move all requests away from D, thus ensuring more requests are routed to healthier nodes.
+Below graph shows the routing probability (P) on a down node (D) in a 8-node cluster with respect to number of requests (r). Notice how quickly the routing probability on D reduces as the requests on D start to fail. Depending on the rate of request, it will only take a few seconds (sometime even milliseconds) to move all requests away from D, thus ensuring more requests are routed to healthier nodes.
 
 <p>
 <img src="https://github.com/gptankit/illustrations/blob/master/serviceq/prob-8.png?raw=true" style="width:50%"/> 
 </p>
 
-Note that, even when requests keep failing on D (however less), ServiceQ retries them on other nodes until they succeed. If they do not succeed on any of the nodes, they are buffered and peiodically retried on the cluster, until they succeed.
+Note that, even when requests keep failing on D (however less), ServiceQ retries them on other nodes until they succeed. If they do not succeed on any of the nodes, they are buffered and periodically retried on the cluster (using the same approach above), until they succeed.
 
 <b>Noticeable features</b>
 
