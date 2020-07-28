@@ -9,7 +9,7 @@ import (
 )
 
 // main sets up serviceq properties, initializes work done and request buffers,
-// and starts routines to accept new connections and observe buffered requests.
+// and starts routines to accept new tcp connections and observe buffered requests.
 func main() {
 
 	if sqp, err := getProperties(getPropertyFilePath()); err == nil {
@@ -26,11 +26,9 @@ func main() {
 			// accept new connections
 			listenActive(listener, creq, cwork, &sqp)
 		} else {
-			//fmt.Fprintf(os.Stderr, "Could not listen on :"+sqp.ListenerPort+" -- %s\n", err.Error())
 			go errorlog.LogGenericError("Could not listen on :" + sqp.ListenerPort + " -- " + err.Error())
 		}
 	} else {
-		//fmt.Fprintf(os.Stderr, "Could not read sq.properties, closing listener -- %s\n", err.Error())
 		go errorlog.LogGenericError("Could not read sq.properties, closing listener -- " + err.Error())
 	}
 }
@@ -44,7 +42,6 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 				if sqp.Proto == "http" {
 					go protocol.HandleHttpConnection(&conn, creq, cwork, sqp)
 				} else {
-					<-cwork
 					conn.Close()
 				}
 			} else {
