@@ -93,4 +93,6 @@ After all is set - </br>
 
 <pre>$ sudo /usr/local/serviceq/serviceq</pre>
 
+Refer wiki for more details: https://github.com/gptankit/serviceq/wiki
+
 Feel free to play around and post feedbacks
