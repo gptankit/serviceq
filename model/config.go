@@ -7,6 +7,7 @@ type Config struct {
 	CustomRequestHeaders    []string
 	CustomResponseHeaders   []string
 	ConcurrencyPeak         int64
+	EnableUpfrontQ          bool
 	EnableDeferredQ         bool
 	DeferredQRequestFormats []string
 	RetryGap                int

@@ -53,7 +53,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 
 		var resParam model.ResponseParam
 		var reqParam model.RequestParam
-		var toBuffer bool
+		toBuffer := sqp.EnableUpfrontQ
 
 		// read from and write to conn
 		req, err := httpConn.ReadFrom()
@@ -63,12 +63,14 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 			cwork <- 1
 
 			reqParam = saveReqParam(req)
-			resParam, toBuffer, err = dialAndSend(reqParam, sqp)
-			if err == nil {
-				err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
-				if err != nil {
-					//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
-					go errorlog.LogGenericError("Error on writing to client conn")
+			if !toBuffer {
+				resParam, toBuffer, err = dialAndSend(reqParam, sqp)
+				if err == nil {
+					err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
+					if err != nil {
+						//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+						go errorlog.LogGenericError("Error on writing to client conn")
+					}
 				}
 			}
 

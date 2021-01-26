@@ -11,6 +11,7 @@ type ServiceQProperties struct {
 	CustomRequestHeaders    []string
 	CustomResponseHeaders   []string
 	MaxConcurrency          int64
+	EnableUpfrontQ          bool
 	EnableDeferredQ         bool
 	DeferredQRequestFormats []string
 	MaxRetries              int

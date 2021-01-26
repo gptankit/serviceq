@@ -17,6 +17,7 @@ const (
 	SQP_K_REQUEST_HEADERS            = "CUSTOM_REQUEST_HEADERS"
 	SQP_K_RESPONSE_HEADERS           = "CUSTOM_RESPONSE_HEADERS"
 	SQP_K_MAX_CONCURRENT_CONNS       = "CONCURRENCY_PEAK"
+	SQP_K_ENABLE_UPFRONT_Q           = "ENABLE_UPFRONT_Q"
 	SQP_K_ENABLE_DEFERRED_Q          = "ENABLE_DEFERRED_Q"
 	SQP_K_DEFERRED_Q_REQUEST_FORMATS = "DEFERRED_Q_REQUEST_FORMATS"
 	SQP_K_RETRY_GAP                  = "RETRY_GAP"
@@ -121,6 +122,9 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 	case SQP_K_MAX_CONCURRENT_CONNS:
 		cfg.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
 		fmt.Printf("concurreny peak> %d\n", cfg.ConcurrencyPeak)
+		break
+	case SQP_K_ENABLE_UPFRONT_Q:
+		cfg.EnableUpfrontQ, _ = strconv.ParseBool(kvpart[1])
 		break
 	case SQP_K_ENABLE_DEFERRED_Q:
 		cfg.EnableDeferredQ, _ = strconv.ParseBool(kvpart[1])
