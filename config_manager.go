@@ -11,25 +11,26 @@ import (
 )
 
 const (
-	SQP_K_LISTENER_PORT              = "LISTENER_PORT"
-	SQP_K_PROTOCOL                   = "PROTO"
-	SQP_K_ENDPOINTS                  = "ENDPOINTS"
-	SQP_K_REQUEST_HEADERS            = "CUSTOM_REQUEST_HEADERS"
-	SQP_K_RESPONSE_HEADERS           = "CUSTOM_RESPONSE_HEADERS"
-	SQP_K_MAX_CONCURRENT_CONNS       = "CONCURRENCY_PEAK"
-	SQP_K_ENABLE_DEFERRED_Q          = "ENABLE_DEFERRED_Q"
-	SQP_K_DEFERRED_Q_REQUEST_FORMATS = "DEFERRED_Q_REQUEST_FORMATS"
-	SQP_K_RETRY_GAP                  = "RETRY_GAP"
-	SQP_K_OUT_REQUEST_TIMEOUT        = "OUTGOING_REQUEST_TIMEOUT"
-	SQP_K_SSL_ENABLED                = "SSL_ENABLE"
-	SQP_K_SSL_CERTIFICATE_FILE       = "SSL_CERTIFICATE_FILE"
-	SQP_K_SSL_PRIVATE_KEY_FILE       = "SSL_PRIVATE_KEY_FILE"
-	SQP_K_SSL_AUTO_ENABLED           = "SSL_AUTO_ENABLE"
-	SQP_K_SSL_AUTO_CERTIFICATE_DIR   = "SSL_AUTO_CERTIFICATE_DIR"
-	SQP_K_SSL_AUTO_EMAIL             = "SSL_AUTO_EMAIL"
-	SQP_K_SSL_AUTO_DOMAINS           = "SSL_AUTO_DOMAIN_NAMES"
-	SQP_K_SSL_AUTO_RENEW_BEFORE      = "SSL_AUTO_RENEW_BEFORE"
-	SQP_K_KEEP_ALIVE_TIMEOUT         = "KEEP_ALIVE_TIMEOUT"
+	SQP_K_LISTENER_PORT            = "LISTENER_PORT"
+	SQP_K_PROTOCOL                 = "PROTO"
+	SQP_K_ENDPOINTS                = "ENDPOINTS"
+	SQP_K_REQUEST_HEADERS          = "CUSTOM_REQUEST_HEADERS"
+	SQP_K_RESPONSE_HEADERS         = "CUSTOM_RESPONSE_HEADERS"
+	SQP_K_MAX_CONCURRENT_CONNS     = "CONCURRENCY_PEAK"
+	SQP_K_ENABLE_UPFRONT_Q         = "ENABLE_UPFRONT_Q"
+	SQP_K_ENABLE_DEFERRED_Q        = "ENABLE_DEFERRED_Q"
+	SQP_K_Q_REQUEST_FORMATS        = "Q_REQUEST_FORMATS"
+	SQP_K_RETRY_GAP                = "RETRY_GAP"
+	SQP_K_OUT_REQUEST_TIMEOUT      = "OUTGOING_REQUEST_TIMEOUT"
+	SQP_K_SSL_ENABLED              = "SSL_ENABLE"
+	SQP_K_SSL_CERTIFICATE_FILE     = "SSL_CERTIFICATE_FILE"
+	SQP_K_SSL_PRIVATE_KEY_FILE     = "SSL_PRIVATE_KEY_FILE"
+	SQP_K_SSL_AUTO_ENABLED         = "SSL_AUTO_ENABLE"
+	SQP_K_SSL_AUTO_CERTIFICATE_DIR = "SSL_AUTO_CERTIFICATE_DIR"
+	SQP_K_SSL_AUTO_EMAIL           = "SSL_AUTO_EMAIL"
+	SQP_K_SSL_AUTO_DOMAINS         = "SSL_AUTO_DOMAIN_NAMES"
+	SQP_K_SSL_AUTO_RENEW_BEFORE    = "SSL_AUTO_RENEW_BEFORE"
+	SQP_K_KEEP_ALIVE_TIMEOUT       = "KEEP_ALIVE_TIMEOUT"
 
 	SQ_WD  = "/usr/local/serviceq"
 	SQ_VER = "serviceq/0.4"
@@ -122,11 +123,14 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 		cfg.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
 		fmt.Printf("concurreny peak> %d\n", cfg.ConcurrencyPeak)
 		break
+	case SQP_K_ENABLE_UPFRONT_Q:
+		cfg.EnableUpfrontQ, _ = strconv.ParseBool(kvpart[1])
+		break
 	case SQP_K_ENABLE_DEFERRED_Q:
 		cfg.EnableDeferredQ, _ = strconv.ParseBool(kvpart[1])
 		break
-	case SQP_K_DEFERRED_Q_REQUEST_FORMATS:
-		cfg.DeferredQRequestFormats = strings.Split(kvpart[1], ",")
+	case SQP_K_Q_REQUEST_FORMATS:
+		cfg.QRequestFormats = strings.Split(kvpart[1], ",")
 		break
 	case SQP_K_RETRY_GAP:
 		retryGapVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
@@ -199,29 +203,30 @@ func validate(cfg model.Config) {
 func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
 
 	return model.ServiceQProperties{
-		ListenerPort:            cfg.ListenerPort,
-		Proto:                   cfg.Proto,
-		ServiceList:             cfg.Endpoints,
-		CustomRequestHeaders:    cfg.CustomRequestHeaders,
-		CustomResponseHeaders:   cfg.CustomResponseHeaders,
-		MaxConcurrency:          cfg.ConcurrencyPeak,
-		EnableDeferredQ:         cfg.EnableDeferredQ,
-		DeferredQRequestFormats: cfg.DeferredQRequestFormats,
-		MaxRetries:              len(cfg.Endpoints),
-		RetryGap:                cfg.RetryGap,
-		IdleGap:                 500,
-		RequestErrorLog:         make(map[string]uint64, len(cfg.Endpoints)),
-		OutRequestTimeout:       cfg.OutRequestTimeout,
-		SSLEnabled:              cfg.SSLEnabled,
-		SSLCertificateFile:      cfg.SSLCertificateFile,
-		SSLPrivateKeyFile:       cfg.SSLPrivateKeyFile,
-		SSLAutoEnabled:          cfg.SSLAutoEnabled,
-		SSLAutoCertificateDir:   cfg.SSLAutoCertificateDir,
-		SSLAutoEmail:            cfg.SSLAutoEmail,
-		SSLAutoDomains:          cfg.SSLAutoDomains,
-		SSLAutoRenewBefore:      cfg.SSLAutoRenewBefore,
-		KeepAliveTimeout:        cfg.KeepAliveTimeout,
-		KeepAliveServe:          keepAliveServe(cfg.CustomResponseHeaders),
+		ListenerPort:          cfg.ListenerPort,
+		Proto:                 cfg.Proto,
+		ServiceList:           cfg.Endpoints,
+		CustomRequestHeaders:  cfg.CustomRequestHeaders,
+		CustomResponseHeaders: cfg.CustomResponseHeaders,
+		MaxConcurrency:        cfg.ConcurrencyPeak,
+		EnableUpfrontQ:        cfg.EnableUpfrontQ,
+		EnableDeferredQ:       cfg.EnableDeferredQ,
+		QRequestFormats:       cfg.QRequestFormats,
+		MaxRetries:            len(cfg.Endpoints),
+		RetryGap:              cfg.RetryGap,
+		IdleGap:               500,
+		RequestErrorLog:       make(map[string]uint64, len(cfg.Endpoints)),
+		OutRequestTimeout:     cfg.OutRequestTimeout,
+		SSLEnabled:            cfg.SSLEnabled,
+		SSLCertificateFile:    cfg.SSLCertificateFile,
+		SSLPrivateKeyFile:     cfg.SSLPrivateKeyFile,
+		SSLAutoEnabled:        cfg.SSLAutoEnabled,
+		SSLAutoCertificateDir: cfg.SSLAutoCertificateDir,
+		SSLAutoEmail:          cfg.SSLAutoEmail,
+		SSLAutoDomains:        cfg.SSLAutoDomains,
+		SSLAutoRenewBefore:    cfg.SSLAutoRenewBefore,
+		KeepAliveTimeout:      cfg.KeepAliveTimeout,
+		KeepAliveServe:        keepAliveServe(cfg.CustomResponseHeaders),
 	}
 }
 

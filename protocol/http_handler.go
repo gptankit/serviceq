@@ -63,12 +63,15 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 			cwork <- 1
 
 			reqParam = saveReqParam(req)
-			resParam, toBuffer, err = dialAndSend(reqParam, sqp)
-			if err == nil {
-				err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
-				if err != nil {
-					//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
-					go errorlog.LogGenericError("Error on writing to client conn")
+			toBuffer = sqp.EnableUpfrontQ && canBeBuffered(reqParam, sqp)
+			if !toBuffer {
+				resParam, toBuffer, err = dialAndSend(reqParam, sqp)
+				if err == nil {
+					err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
+					if err != nil {
+						//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
+						go errorlog.LogGenericError("Error on writing to client conn")
+					}
 				}
 			}
 
@@ -257,7 +260,7 @@ func evalError(err error) error {
 func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *model.ServiceQProperties) (model.ResponseParam, bool, error) {
 
 	if clientErr.Error() == RESPONSE_NO_RESPONSE || clientErr.Error() == RESPONSE_TIMED_OUT {
-		if canBeBuffered(reqParam, sqp) {
+		if sqp.EnableDeferredQ && canBeBuffered(reqParam, sqp) {
 			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, "Request Buffered"), true, nil
 		} else {
 			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, ""), false, nil
@@ -292,31 +295,28 @@ func getCustomResponse(protocol string, statusCode int, resMsg string) model.Res
 // config in sq.properties. Http method and uri are matched against buffer config.
 func canBeBuffered(reqParam model.RequestParam, sqp *model.ServiceQProperties) bool {
 
-	if sqp.EnableDeferredQ {
+	reqFormats := sqp.QRequestFormats
 
-		reqFormats := sqp.DeferredQRequestFormats
+	if reqFormats == nil || reqFormats[0] == "ALL" {
+		return true
+	}
 
-		if reqFormats == nil || reqFormats[0] == "ALL" {
-			return true
-		}
-
-		for _, rf := range reqFormats {
-			satisfy := false
-			rfBrkUp := strings.Split(rf, " ")
-			if (0 < len(rfBrkUp) && reqParam.Method == rfBrkUp[0]) || (0 >= len(rfBrkUp)) {
+	for _, rf := range reqFormats {
+		satisfy := false
+		rfBrkUp := strings.Split(rf, " ")
+		if (0 < len(rfBrkUp) && reqParam.Method == rfBrkUp[0]) || (0 >= len(rfBrkUp)) {
+			satisfy = true
+			if (1 < len(rfBrkUp) && reqParam.RequestURI == rfBrkUp[1]) || (1 >= len(rfBrkUp)) {
 				satisfy = true
-				if (1 < len(rfBrkUp) && reqParam.RequestURI == rfBrkUp[1]) || (1 >= len(rfBrkUp)) {
-					satisfy = true
-					if 2 < len(rfBrkUp) && rfBrkUp[2] == "!" {
-						satisfy = false
-					}
-				} else {
+				if 2 < len(rfBrkUp) && rfBrkUp[2] == "!" {
 					satisfy = false
 				}
+			} else {
+				satisfy = false
 			}
-			if satisfy {
-				return satisfy
-			}
+		}
+		if satisfy {
+			return satisfy
 		}
 	}
 
