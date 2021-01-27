@@ -15,6 +15,7 @@ Note that, even when requests keep failing on D (however less), ServiceQ retries
 * HTTP Load Balancing<br/>
 * Probabilistic node selection based on error feedback<br/>
 * Failed request buffering and deferred forwarding<br/>
+* Upfront request buffering<br/>
 * Request retries<br/>
 * Concurrent connections limit<br/>
 * Complete TLS/SSL support (automatic and manual)
@@ -84,10 +85,12 @@ By default deferred queue is enabled with all methods and routes allowed. These 
 ENABLE_DEFERRED_Q=true
 
 #Request format allows given method/route on deferred queue -- picked up if ENABLE_DEFERRED_Q is true
-#DEFERRED_Q_REQUEST_FORMATS=POST /orders,PUT,PATCH,DELETE
-#DEFERRED_Q_REQUEST_FORMATS=ALL
-DEFERRED_Q_REQUEST_FORMATS=POST,PUT,PATCH,DELETE
+#Q_REQUEST_FORMATS=POST /orders,PUT,PATCH,DELETE
+#Q_REQUEST_FORMATS=ALL
+Q_REQUEST_FORMATS=POST,PUT,PATCH,DELETE
 </pre>
+
+(Note that Q_REQUEST_FORMATS is also considered if ENABLE_UPFRONT_Q is true)
 
 After all is set - </br>
 
