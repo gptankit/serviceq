@@ -19,14 +19,14 @@ func TestWorkAssigment(t *testing.T) {
 			{RawUrl: "http://example.org:4001", Scheme: "http", QualifiedUrl: "http://example.org:4001", Host: "example.org:4001"},
 			{RawUrl: "http://example.org:5001", Scheme: "http", QualifiedUrl: "http://example.org:5001", Host: "example.org:5001"},
 		},
-		MaxConcurrency:          8, // if changing, do check value of duplicateWork
-		EnableDeferredQ:         true,
-		DeferredQRequestFormats: []string{"ALL"},
-		MaxRetries:              1,   // we know it's down
-		RetryGap:                0,   // ms
-		IdleGap:                 500, // ms
-		RequestErrorLog:         make(map[string]uint64, 2),
-		OutRequestTimeout:       1,
+		MaxConcurrency:    8, // if changing, do check value of duplicateWork
+		EnableDeferredQ:   true,
+		QRequestFormats:   []string{"ALL"},
+		MaxRetries:        1,   // we know it's down
+		RetryGap:          0,   // ms
+		IdleGap:           500, // ms
+		RequestErrorLog:   make(map[string]uint64, 2),
+		OutRequestTimeout: 1,
 	}
 
 	cw := make(chan int, sqp.MaxConcurrency)
