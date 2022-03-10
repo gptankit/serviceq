@@ -3,15 +3,16 @@ package main
 import (
 	"crypto/rand"
 	"crypto/tls"
+	"net"
+	"time"
+
 	"github.com/gptankit/serviceq/model"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
-	"net"
-	"time"
 )
 
 // getListener returns a new http(s) listener.
-func getListener(sqp model.ServiceQProperties) (net.Listener, error) {
+func getListener(sqp *model.ServiceQProperties) (net.Listener, error) {
 
 	transport := "tcp"
 	addr := ":" + sqp.ListenerPort

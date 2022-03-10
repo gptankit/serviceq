@@ -1,11 +1,9 @@
-package protocol
+package httpconn
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
-	"github.com/gptankit/serviceq/algorithm"
-	"github.com/gptankit/serviceq/errorlog"
-	"github.com/gptankit/serviceq/model"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -13,6 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gptankit/serviceq/algorithm"
+	"github.com/gptankit/serviceq/errorlog"
+	"github.com/gptankit/serviceq/model"
+	"github.com/gptankit/serviceq/tcputils"
 )
 
 var client *http.Client
@@ -27,27 +30,89 @@ func init() {
 	}
 }
 
-const (
-	SERVICEQ_NO_ERR      = 600
-	SERVICEQ_FLOODED_ERR = 601
-	UPSTREAM_NO_ERR      = 700
-	UPSTREAM_TCP_ERR     = 701
-	UPSTREAM_HTTP_ERR    = 702
+// HTTPConnection is a http connection object that holds underlying
+// tcp connection with reader and writer to that connection.
+type HTTPConnection struct {
+	tcpConn *net.Conn
+	reader  *bufio.Reader
+	writer  *bufio.Writer
+}
 
-	RESPONSE_FLOODED      = "SERVICEQ_FLOODED"
-	RESPONSE_TIMED_OUT    = "UPSTREAM_TIMED_OUT"
-	RESPONSE_SERVICE_DOWN = "UPSTREAM_DOWN"
-	RESPONSE_NO_RESPONSE  = "UPSTREAM_NO_RESPONSE"
-)
+// Enclose initializes new http reader/writer to underlying tcp connection.
+func New(tcpConn *net.Conn) *HTTPConnection {
 
-// HandleHttpConnection reads from incoming http connection and attempts to forward it to upstream nodes by calling
+	httpConn := new(HTTPConnection)
+	httpConn.tcpConn = tcpConn
+	httpConn.reader = bufio.NewReader(*httpConn.tcpConn)
+	httpConn.writer = bufio.NewWriter(*httpConn.tcpConn)
+
+	return httpConn
+}
+
+func NewNop() *HTTPConnection {
+
+	httpConn := &HTTPConnection{
+		tcpConn: nil,
+		reader:  nil,
+		writer:  nil,
+	}
+
+	return httpConn
+}
+
+// Read reads http request from reader.
+func (httpConn *HTTPConnection) Read() (*http.Request, error) {
+
+	req, err := http.ReadRequest(httpConn.reader)
+
+	if err == nil {
+		return req, nil
+	}
+
+	return nil, errors.New("read-fail")
+}
+
+// Write writes http response to writer (in http format).
+func (httpConn *HTTPConnection) Write(res model.ResponseParam, customHeaders []string) error {
+
+	responseHeaders := ""
+
+	// add original response headers
+	if res.Headers != nil {
+		for k, v := range res.Headers {
+			responseHeaders += k + ": " + strings.Join(v, ",") + "\n"
+		}
+	}
+
+	// add user custom headers
+	for _, h := range customHeaders {
+		responseHeaders += h + "\n"
+	}
+
+	if responseHeaders != "" {
+		responseHeaders = responseHeaders[:len(responseHeaders)-1]
+		res.Status = res.Status + "\n"
+	}
+
+	clientResStr := res.Protocol + " " + res.Status + responseHeaders + "\n\n" + string(res.BodyBuff)
+
+	clientRes := []byte(clientResStr)
+
+	_, err := httpConn.writer.Write(clientRes) // tunneling onto tcp conn writer
+	if err == nil {
+		httpConn.writer.Flush()
+		return nil
+	}
+
+	return errors.New("write-fail")
+}
+
+// ExecuteRealTime reads from incoming http connection and attempts to forward it to upstream nodes by calling
 // dialAndSend(). It temporarily saves the request before forwarding, if needed for subsequent retries. This saved
 // request can be buffered if dialAndSend() is unable to forward to any upstream nodes.
-func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+func (httpConn *HTTPConnection) ExecuteRealTime(creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
-	httpConn := model.HTTPConnection{}
-	setTCPDeadline(conn, sqp.KeepAliveTimeout)
-	httpConn.Enclose(conn)
+	tcputils.SetTCPDeadline(httpConn.tcpConn, sqp.KeepAliveTimeout)
 
 	for {
 
@@ -56,7 +121,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 		var toBuffer bool
 
 		// read from and write to conn
-		req, err := httpConn.ReadFrom()
+		req, err := httpConn.Read()
 
 		if err == nil {
 			// add work
@@ -67,7 +132,7 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 			if !toBuffer {
 				resParam, toBuffer, err = dialAndSend(reqParam, sqp)
 				if err == nil {
-					err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
+					err = httpConn.Write(resParam, sqp.CustomResponseHeaders)
 					if err != nil {
 						//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
 						go errorlog.LogGenericError("Error on writing to client conn")
@@ -85,33 +150,55 @@ func HandleHttpConnection(conn *net.Conn, creq chan interface{}, cwork chan int,
 			<-cwork
 
 			// check if a conn is to be closed
-			if optCloseConn(conn, reqParam, sqp.KeepAliveServe) {
+			if optCloseConn(httpConn.tcpConn, reqParam, sqp.KeepAliveServe) {
 				break
 			}
 		} else {
 			//fmt.Fprintf(os.Stderr, "Error on reading from client conn\n")
 			go errorlog.LogGenericError("Error on reading from client conn")
-			forceCloseConn(conn)
+			forceCloseConn(httpConn.tcpConn)
 			break
 		}
 	}
-
-	return
 }
 
-// DiscardHttpConnection sets error response and discards client http connection.
-func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
+// ExecuteBuffered retries buffered requests by calling dialAndSend().
+func (httpConn *HTTPConnection) ExecuteBuffered(creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+
+	for {
+		if len(cwork) > 0 && len(creq) > 0 {
+
+			reqParam := (<-creq).(model.RequestParam)
+			// send from buffer
+			_, toBuffer, _ := dialAndSend(reqParam, sqp)
+
+			// to buffer?
+			if toBuffer {
+				creq <- reqParam
+				cwork <- 1
+			}
+
+			// remove work
+			<-cwork
+
+		} else {
+			time.Sleep(time.Duration(sqp.IdleGap) * time.Millisecond) // wait for more work
+		}
+	}
+
+}
+
+// Discard sets error response and discards client http connection.
+func (httpConn *HTTPConnection) Discard(sqp *model.ServiceQProperties) {
 
 	var resParam model.ResponseParam
-	httpConn := model.HTTPConnection{}
-	httpConn.Enclose(conn)
-	req, err := httpConn.ReadFrom()
+	req, err := httpConn.Read()
 
 	if err == nil {
 		resParam = getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
-		clientErr := errors.New(RESPONSE_FLOODED)
-		go errorlog.IncrementErrorCount(sqp, "SQ_PROXY", SERVICEQ_FLOODED_ERR, clientErr.Error())
-		err = httpConn.WriteTo(resParam, sqp.CustomResponseHeaders)
+		clientErr := errors.New(tcputils.RESPONSE_FLOODED)
+		go errorlog.IncrementErrorCount(sqp, "SQ_PROXY", tcputils.SERVICEQ_FLOODED_ERR, clientErr.Error())
+		err = httpConn.Write(resParam, sqp.CustomResponseHeaders)
 		if err != nil {
 			//fmt.Fprintf(os.Stderr, "Error on writing to client conn\n")
 			go errorlog.LogGenericError("Error on writing to client conn")
@@ -119,27 +206,7 @@ func DiscardHttpConnection(conn *net.Conn, sqp *model.ServiceQProperties) {
 	}
 
 	go errorlog.LogGenericError("Error on reading from client conn")
-	forceCloseConn(conn)
-
-	return
-}
-
-// HandleHttpBufferedReader retries buffered requests by calling dialAndSend().
-func HandleHttpBufferedReader(reqParam model.RequestParam, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
-
-	// send from buffer
-	_, toBuffer, _ := dialAndSend(reqParam, sqp)
-
-	// to buffer?
-	if toBuffer {
-		creq <- reqParam
-		cwork <- 1
-	}
-
-	// remove work
-	<-cwork
-
-	return
+	forceCloseConn(httpConn.tcpConn)
 }
 
 // saveReqParam parses and temporarily saves http request.
@@ -183,40 +250,40 @@ func dialAndSend(reqParam model.RequestParam, sqp *model.ServiceQProperties) (mo
 	for retry := 0; retry < sqp.MaxRetries; retry++ {
 
 		choice = algorithm.ChooseServiceIndex(sqp, choice, retry)
-		downstrService := sqp.ServiceList[choice]
+		upstrService := sqp.ServiceList[choice]
 
-		// fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), downstrService.Host)
+		// fmt.Printf("%s] Connecting to %s\n", time.Now().UTC().Format("2006-01-02 15:04:05"), upstrService.Host)
 
 		// ping ip -- response/error flow below will take care of tcp connect
 		/*
-			if !isTCPAlive(downstrService.Host) {
+			if !isTCPAlive(upstrService.Host) {
 				clientErr = errors.New(RESPONSE_SERVICE_DOWN)
-				go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
+				go errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, UPSTREAM_TCP_ERR, clientErr.Error())
 				time.Sleep(time.Duration(sqp.RetryGap) * time.Second) // wait on error
 				continue
 			}*/
 
-		//fmt.Printf("->Forwarding to %s\n", downstrService.QualifiedUrl)
+		//fmt.Printf("->Forwarding to %s\n", upstrService.QualifiedUrl)
 
 		body := ioutil.NopCloser(bytes.NewReader(reqParam.BodyBuff))
-		downstrReq, _ := http.NewRequest(reqParam.Method, downstrService.QualifiedUrl+reqParam.RequestURI, body)
-		downstrReq.Header = reqParam.Headers
+		upstrReq, _ := http.NewRequest(reqParam.Method, upstrService.QualifiedUrl+reqParam.RequestURI, body)
+		upstrReq.Header = reqParam.Headers
 
 		once.Do(func() {
 			client.Timeout = time.Duration(sqp.OutRequestTimeout) * time.Second
 		})
-		resp, err := client.Do(downstrReq)
+		resp, err := client.Do(upstrReq)
 
 		// handle response
 		if resp == nil || err != nil {
 			nodeErr = evalError(err)
-			go errorlog.IncrementErrorCount(sqp, downstrService.QualifiedUrl, UPSTREAM_HTTP_ERR, nodeErr.Error())
+			go errorlog.IncrementErrorCount(sqp, upstrService.QualifiedUrl, tcputils.UPSTREAM_HTTP_ERR, nodeErr.Error())
 
 			time.Sleep(time.Duration(sqp.RetryGap) * time.Second) // wait on error
 			continue
 		} else {
 			nodeErr = nil
-			go errorlog.ResetErrorCount(sqp, downstrService.QualifiedUrl)
+			go errorlog.ResetErrorCount(sqp, upstrService.QualifiedUrl)
 
 			// prepare response
 			responseParam := model.ResponseParam{}
@@ -245,12 +312,12 @@ func evalError(err error) error {
 	nodeErr := err
 	if nodeErr != nil {
 		if e, ok := nodeErr.(net.Error); ok && e.Timeout() {
-			nodeErr = errors.New(RESPONSE_TIMED_OUT)
+			nodeErr = errors.New(tcputils.RESPONSE_TIMED_OUT)
 		} else {
-			nodeErr = errors.New(RESPONSE_NO_RESPONSE)
+			nodeErr = errors.New(tcputils.RESPONSE_NO_RESPONSE)
 		}
 	} else {
-		nodeErr = errors.New(RESPONSE_NO_RESPONSE)
+		nodeErr = errors.New(tcputils.RESPONSE_NO_RESPONSE)
 	}
 
 	return nodeErr
@@ -259,13 +326,13 @@ func evalError(err error) error {
 // checkErrorAndRespond sets error and buffer flag based on buffer config and type of error from upstream node.
 func checkErrorAndRespond(clientErr error, reqParam model.RequestParam, sqp *model.ServiceQProperties) (model.ResponseParam, bool, error) {
 
-	if clientErr.Error() == RESPONSE_NO_RESPONSE || clientErr.Error() == RESPONSE_TIMED_OUT {
+	if clientErr.Error() == tcputils.RESPONSE_NO_RESPONSE || clientErr.Error() == tcputils.RESPONSE_TIMED_OUT {
 		if sqp.EnableDeferredQ && canBeBuffered(reqParam, sqp) {
 			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, "Request Buffered"), true, nil
 		} else {
 			return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, ""), false, nil
 		}
-	} else if clientErr.Error() == RESPONSE_SERVICE_DOWN {
+	} else if clientErr.Error() == tcputils.RESPONSE_SERVICE_DOWN {
 		return getCustomResponse(reqParam.Protocol, http.StatusServiceUnavailable, ""), false, nil
 	} else {
 		return getCustomResponse(reqParam.Protocol, http.StatusBadGateway, ""), false, nil

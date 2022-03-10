@@ -3,11 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/gptankit/serviceq/model"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/gptankit/serviceq/model"
 )
 
 const (
@@ -43,11 +44,11 @@ func getPropertyFilePath() string {
 }
 
 // getProperties transforms sq.properties into config model and validates it.
-func getProperties(confFilePath string) (model.ServiceQProperties, error) {
+func getProperties(confFilePath string) (*model.ServiceQProperties, error) {
 
 	confFileSize := 0
-	var cfg model.Config
-	var sqp model.ServiceQProperties
+	var cfg *model.Config
+	var sqp *model.ServiceQProperties
 
 	if fileStat, err := os.Stat(confFilePath); err == nil {
 		confFileSize = int(fileStat.Size())
@@ -64,7 +65,7 @@ func getProperties(confFilePath string) (model.ServiceQProperties, error) {
 				if line, _, err := reader.ReadLine(); err == nil {
 					sline := string(line)
 					kvpart := strings.Split(sline, "=")
-					if kvpart != nil && len(kvpart) > 0 {
+					if len(kvpart) > 0 {
 						cfg = populate(cfg, kvpart)
 					}
 				} else {
@@ -83,17 +84,15 @@ func getProperties(confFilePath string) (model.ServiceQProperties, error) {
 }
 
 // populate maps key/value pairs in sq.properties to corresponding config fields.
-func populate(cfg model.Config, kvpart []string) model.Config {
+func populate(cfg *model.Config, kvpart []string) *model.Config {
 
 	switch kvpart[0] {
 
 	case SQP_K_LISTENER_PORT:
 		cfg.ListenerPort = kvpart[1]
 		fmt.Printf("serviceq listening on port> %s\n", cfg.ListenerPort)
-		break
 	case SQP_K_PROTOCOL:
 		cfg.Proto = kvpart[1]
-		break
 	case SQP_K_ENDPOINTS:
 		vpart := strings.Split(kvpart[1], ",")
 		for _, s := range vpart {
@@ -118,28 +117,21 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 			cfg.Endpoints = append(cfg.Endpoints, endpoint)
 			fmt.Printf("service addr> %s\n", endpoint.QualifiedUrl)
 		}
-		break
 	case SQP_K_MAX_CONCURRENT_CONNS:
 		cfg.ConcurrencyPeak, _ = strconv.ParseInt(kvpart[1], 10, 64)
 		fmt.Printf("concurreny peak> %d\n", cfg.ConcurrencyPeak)
-		break
 	case SQP_K_ENABLE_UPFRONT_Q:
 		cfg.EnableUpfrontQ, _ = strconv.ParseBool(kvpart[1])
-		break
 	case SQP_K_ENABLE_DEFERRED_Q:
 		cfg.EnableDeferredQ, _ = strconv.ParseBool(kvpart[1])
-		break
 	case SQP_K_Q_REQUEST_FORMATS:
 		cfg.QRequestFormats = strings.Split(kvpart[1], ",")
-		break
 	case SQP_K_RETRY_GAP:
 		retryGapVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
 		cfg.RetryGap = int(retryGapVal)
-		break
 	case SQP_K_OUT_REQUEST_TIMEOUT:
 		reqTimeOutVal, _ := strconv.ParseInt(kvpart[1], 10, 32)
 		cfg.OutRequestTimeout = int32(reqTimeOutVal)
-		break
 	case SQP_K_RESPONSE_HEADERS:
 		vpart := strings.Split(kvpart[1], "|")
 		for _, s := range vpart {
@@ -150,38 +142,28 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 				cfg.CustomResponseHeaders = append(cfg.CustomResponseHeaders, s)
 			}
 		}
-		break
 	case SQP_K_SSL_ENABLED:
 		cfg.SSLEnabled, _ = strconv.ParseBool(kvpart[1])
 		fmt.Printf("ssl enabled> %t\n", cfg.SSLEnabled)
-		break
 	case SQP_K_SSL_CERTIFICATE_FILE:
 		cfg.SSLCertificateFile = kvpart[1]
-		break
 	case SQP_K_SSL_PRIVATE_KEY_FILE:
 		cfg.SSLPrivateKeyFile = kvpart[1]
-		break
 	case SQP_K_SSL_AUTO_ENABLED:
 		cfg.SSLAutoEnabled, _ = strconv.ParseBool(kvpart[1])
 		fmt.Printf("sslauto enabled> %t\n", cfg.SSLAutoEnabled)
-		break
 	case SQP_K_SSL_AUTO_CERTIFICATE_DIR:
 		cfg.SSLAutoCertificateDir = kvpart[1]
-		break
 	case SQP_K_SSL_AUTO_EMAIL:
 		cfg.SSLAutoEmail = kvpart[1]
-		break
 	case SQP_K_SSL_AUTO_DOMAINS:
 		cfg.SSLAutoDomains = kvpart[1]
-		break
 	case SQP_K_SSL_AUTO_RENEW_BEFORE:
 		autoCertRenewBefore, _ := strconv.ParseInt(kvpart[1], 10, 32)
 		cfg.SSLAutoRenewBefore = int32(autoCertRenewBefore)
-		break
 	case SQP_K_KEEP_ALIVE_TIMEOUT:
 		keepAliveTimeout, _ := strconv.ParseInt(kvpart[1], 10, 32)
 		cfg.KeepAliveTimeout = int32(keepAliveTimeout)
-		break
 	default:
 		break
 	}
@@ -190,7 +172,7 @@ func populate(cfg model.Config, kvpart []string) model.Config {
 }
 
 // validate does a mandatory fields check on sq.properties.
-func validate(cfg model.Config) {
+func validate(cfg *model.Config) {
 
 	if cfg.Proto == "" || cfg.ListenerPort == "" || len(cfg.Endpoints) == 0 || cfg.ConcurrencyPeak <= 0 {
 		fmt.Fprintf(os.Stderr, "Something wrong with sq.properties... exiting\n")
@@ -200,9 +182,9 @@ func validate(cfg model.Config) {
 
 // getAssignedProperties returns a new model.ServiceQProperties object
 // with configs mapped from sq.properties and other default config values.
-func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
+func getAssignedProperties(cfg *model.Config) *model.ServiceQProperties {
 
-	return model.ServiceQProperties{
+	return &model.ServiceQProperties{
 		ListenerPort:          cfg.ListenerPort,
 		Proto:                 cfg.Proto,
 		ServiceList:           cfg.Endpoints,
@@ -233,13 +215,12 @@ func getAssignedProperties(cfg model.Config) model.ServiceQProperties {
 // keepAliveServe returns whether to use keep-alive or not.
 func keepAliveServe(customResponseHeaders []string) bool {
 
-	if customResponseHeaders != nil {
-		for _, h := range customResponseHeaders {
-			h = strings.Replace(h, " ", "", -1)
-			if strings.Contains(h, "Connection:keep-alive") {
-				return true
-			}
+	for _, h := range customResponseHeaders {
+		h = strings.Replace(h, " ", "", -1)
+		if strings.Contains(h, "Connection:keep-alive") {
+			return true
 		}
 	}
+
 	return false
 }

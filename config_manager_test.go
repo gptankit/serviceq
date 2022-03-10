@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/gptankit/serviceq/model"
 	"testing"
+
+	"github.com/gptankit/serviceq/model"
 )
 
 type Properties struct {
-	c model.ServiceQProperties
+	c *model.ServiceQProperties
 	e error
 }
 
