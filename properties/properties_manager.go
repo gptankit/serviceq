@@ -1,4 +1,4 @@
-package main
+package properties
 
 import (
 	"bufio"
@@ -37,27 +37,29 @@ const (
 	SQ_VER = "serviceq/0.4"
 )
 
-// getPropertyFilePath returns path to sq.properties.
-func getPropertyFilePath() string {
+// getPropertiesFilePath returns path to sq.properties
+func GetFilePath() string {
 
 	return SQ_WD + "/config/sq.properties"
 }
 
-// getProperties transforms sq.properties into config model and validates it.
-func getProperties(confFilePath string) (*model.ServiceQProperties, error) {
+// New returns a new ServiceQProperties by transforming sq.properties into config model and validating it
+func New(filePath string) (*model.ServiceQProperties, error) {
 
 	confFileSize := 0
-	var cfg *model.Config
-	var sqp *model.ServiceQProperties
+	var (
+		cfg = new(model.Config)
+		sqp = new(model.ServiceQProperties)
+	)
 
-	if fileStat, err := os.Stat(confFilePath); err == nil {
+	if fileStat, err := os.Stat(filePath); err == nil {
 		confFileSize = int(fileStat.Size())
 	} else {
 		return sqp, err
 	}
 
 	if confFileSize > 0 {
-		if file, err := os.Open(confFilePath); err == nil {
+		if file, err := os.Open(filePath); err == nil {
 			defer file.Close()
 
 			reader := bufio.NewReader(file)
@@ -87,7 +89,6 @@ func getProperties(confFilePath string) (*model.ServiceQProperties, error) {
 func populate(cfg *model.Config, kvpart []string) *model.Config {
 
 	switch kvpart[0] {
-
 	case SQP_K_LISTENER_PORT:
 		cfg.ListenerPort = kvpart[1]
 		fmt.Printf("serviceq listening on port> %s\n", cfg.ListenerPort)
@@ -180,7 +181,7 @@ func validate(cfg *model.Config) {
 	}
 }
 
-// getAssignedProperties returns a new model.ServiceQProperties object
+// getAssignedProperties returns a new ServiceQProperties object
 // with configs mapped from sq.properties and other default config values.
 func getAssignedProperties(cfg *model.Config) *model.ServiceQProperties {
 

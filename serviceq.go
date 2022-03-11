@@ -5,14 +5,15 @@ import (
 
 	"github.com/gptankit/serviceq/errorlog"
 	"github.com/gptankit/serviceq/model"
-	"github.com/gptankit/serviceq/protocol/httpconn"
+	"github.com/gptankit/serviceq/properties"
+	"github.com/gptankit/serviceq/protocol/httpservice"
 )
 
 // main sets up serviceq properties, initializes work done and request buffers,
 // and starts routines to accept new tcp connections and observe buffered requests.
 func main() {
 
-	if sqp, err := getProperties(getPropertyFilePath()); err == nil {
+	if sqp, err := properties.New(properties.GetFilePath()); err == nil {
 
 		if listener, err := getListener(sqp); err == nil {
 			defer listener.Close()
@@ -39,15 +40,16 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 	for {
 		if conn, err := listener.Accept(); err == nil {
 			if len(cwork) < cap(cwork)-1 {
-				if sqp.Proto == "http" {
-					httpConn := httpconn.New(&conn)
-					go httpConn.ExecuteRealTime(creq, cwork, sqp)
-				} else {
+				switch sqp.Proto {
+				case "http":
+					httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConnection(&conn))
+					go httpSrv.ExecuteRealTime(creq, cwork)
+				default:
 					conn.Close()
 				}
 			} else {
-				httpConn := httpconn.New(&conn)
-				go httpConn.Discard(sqp)
+				httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConnection(&conn))
+				go httpSrv.Discard()
 			}
 		}
 	}
@@ -58,10 +60,9 @@ func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQPr
 
 	switch sqp.Proto {
 	case "http":
-		httpConn := httpconn.NewNop()
-		go httpConn.ExecuteBuffered(creq, cwork, sqp)
+		httpSrv := httpservice.New(sqp)
+		go httpSrv.ExecuteBuffered(creq, cwork)
 	default:
-		break // don't do anything
-
+		break
 	}
 }

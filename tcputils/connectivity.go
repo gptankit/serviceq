@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SetTCPDeadline sets keep-alive timeout to tcp connection.
+// SetTCPDeadline sets keep-alive timeout to tcp connection
 func SetTCPDeadline(conn *net.Conn, keepAliveTimeout int32) {
 
 	if keepAliveTimeout >= 0 {
@@ -13,7 +13,7 @@ func SetTCPDeadline(conn *net.Conn, keepAliveTimeout int32) {
 	}
 }
 
-// IsTCPAlive is a ping service to determine tcp connection state.
+// IsTCPAlive is a ping service to determine tcp connection state
 func IsTCPAlive(service string) bool {
 
 	dialTO := 5000
