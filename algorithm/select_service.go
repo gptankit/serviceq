@@ -1,8 +1,9 @@
 package algorithm
 
 import (
-	"github.com/gptankit/serviceq/model"
 	"math"
+
+	"github.com/gptankit/serviceq/model"
 )
 
 // ChooseServiceIndex implements the routing logic to the cluster of upstream services. On

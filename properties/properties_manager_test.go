@@ -1,12 +1,13 @@
-package main
+package properties
 
 import (
-	"github.com/gptankit/serviceq/model"
 	"testing"
+
+	"github.com/gptankit/serviceq/model"
 )
 
 type Properties struct {
-	c model.ServiceQProperties
+	c *model.ServiceQProperties
 	e error
 }
 
@@ -14,8 +15,8 @@ var props Properties
 
 func TestReadConfiguration(t *testing.T) {
 
-	cfPath := "sq.properties"
-	sqp, err := getProperties(cfPath)
+	cfPath := "../sq.properties"
+	sqp, err := New(cfPath)
 
 	props = Properties{c: sqp, e: err}
 	if err != nil {

@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/gptankit/serviceq/model"
 	"testing"
 	"time"
+
+	"github.com/gptankit/serviceq/model"
 )
 
 func TestWorkAssigment(t *testing.T) {
@@ -37,7 +38,7 @@ func TestWorkAssigment(t *testing.T) {
 		Method:     "GET",
 		RequestURI: "/getRefund",
 		Headers: map[string][]string{
-			"Content-Type": []string{"application/json"},
+			"Content-Type": {"application/json"},
 		},
 		BodyBuff: nil,
 	}
