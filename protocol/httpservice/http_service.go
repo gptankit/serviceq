@@ -19,20 +19,20 @@ import (
 
 // HTTPService is the core http flow handler
 type HTTPService struct {
-	tcpConn    *net.Conn
-	reader     *bufio.Reader
-	writer     *bufio.Writer
-	client     *http.Client
-	properties *model.ServiceQProperties
+	inTCPConn     *net.Conn
+	inTCPReader   *bufio.Reader
+	inTCPWriter   *bufio.Writer
+	outHTTPClient *http.Client
+	properties    *model.ServiceQProperties
 }
 
-type ServiceOption func(*HTTPService)
+type HTTPServiceOption func(*HTTPService) error
 
 // New initializes new HTTPService and sets up the upstream client
-func New(sqp *model.ServiceQProperties, serviceOptions ...ServiceOption) *HTTPService {
+func New(sqp *model.ServiceQProperties, httpSrvOptions ...HTTPServiceOption) *HTTPService {
 
 	httpSrv := new(HTTPService)
-	httpSrv.client = &http.Client{
+	httpSrv.outHTTPClient = &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConns:    200,
 			IdleConnTimeout: 30 * time.Second,
@@ -41,32 +41,37 @@ func New(sqp *model.ServiceQProperties, serviceOptions ...ServiceOption) *HTTPSe
 	}
 	httpSrv.properties = sqp
 
-	for _, srvOption := range serviceOptions {
-		srvOption(httpSrv)
+	for _, httpSrvOption := range httpSrvOptions {
+		if err := httpSrvOption(httpSrv); err != nil {
+			httpSrv = nil
+			return nil
+		}
 	}
 
 	return httpSrv
 }
 
-func WithIncomingTCPConnection(tcpConn *net.Conn) ServiceOption {
+func WithIncomingTCPConn(tcpConn *net.Conn) HTTPServiceOption {
 
-	return func(httpSrv *HTTPService) {
+	return func(httpSrv *HTTPService) error {
 
-		httpSrv.tcpConn = tcpConn
-		httpSrv.reader = bufio.NewReader(*httpSrv.tcpConn)
-		httpSrv.writer = bufio.NewWriter(*httpSrv.tcpConn)
+		httpSrv.inTCPConn = tcpConn
+		httpSrv.inTCPReader = bufio.NewReader(*httpSrv.inTCPConn)
+		httpSrv.inTCPWriter = bufio.NewWriter(*httpSrv.inTCPConn)
+
+		return nil
 	}
 }
 
-// New returns a HTTPService that does nothing
+// NewNop returns a HTTPService that does nothing
 func NewNop(sqp *model.ServiceQProperties) *HTTPService {
 
 	httpSrv := &HTTPService{
-		tcpConn:    nil,
-		reader:     nil,
-		writer:     nil,
-		client:     nil,
-		properties: sqp,
+		inTCPConn:     nil,
+		inTCPReader:   nil,
+		inTCPWriter:   nil,
+		outHTTPClient: nil,
+		properties:    sqp,
 	}
 
 	return httpSrv
@@ -75,7 +80,7 @@ func NewNop(sqp *model.ServiceQProperties) *HTTPService {
 // Read reads http request from reader
 func (httpSrv *HTTPService) Read() (*http.Request, error) {
 
-	req, err := http.ReadRequest(httpSrv.reader)
+	req, err := http.ReadRequest(httpSrv.inTCPReader)
 
 	if err == nil {
 		return req, nil
@@ -110,9 +115,9 @@ func (httpSrv *HTTPService) Write(res model.ResponseParam) error {
 
 	clientRes := []byte(clientResStr)
 
-	_, err := httpSrv.writer.Write(clientRes) // tunneling onto tcp conn writer
+	_, err := httpSrv.inTCPWriter.Write(clientRes) // tunneling onto tcp conn writer
 	if err == nil {
-		httpSrv.writer.Flush()
+		httpSrv.inTCPWriter.Flush()
 		return nil
 	}
 
@@ -124,7 +129,7 @@ func (httpSrv *HTTPService) Write(res model.ResponseParam) error {
 // request can be buffered if dialAndSend() is unable to forward to any upstream nodes.
 func (httpSrv *HTTPService) ExecuteRealTime(creq chan interface{}, cwork chan int) {
 
-	tcputils.SetTCPDeadline(httpSrv.tcpConn, httpSrv.properties.KeepAliveTimeout)
+	tcputils.SetTCPDeadline(httpSrv.inTCPConn, httpSrv.properties.KeepAliveTimeout)
 
 	for {
 
@@ -268,7 +273,7 @@ func (httpSrv *HTTPService) dialAndSend(reqParam model.RequestParam) (model.Resp
 		upstrReq, _ := http.NewRequest(reqParam.Method, upstrService.QualifiedUrl+reqParam.RequestURI, body)
 		upstrReq.Header = reqParam.Headers
 
-		resp, err := httpSrv.client.Do(upstrReq)
+		resp, err := httpSrv.outHTTPClient.Do(upstrReq)
 
 		// handle response
 		if resp == nil || err != nil {
@@ -392,6 +397,6 @@ func (httpSrv *HTTPService) optCloseConn(reqParam model.RequestParam) bool {
 // forceCloseConn force closes a net.Conn object
 func (httpSrv *HTTPService) forceCloseConn() bool {
 
-	(*httpSrv.tcpConn).Close()
+	(*httpSrv.inTCPConn).Close()
 	return true
 }
