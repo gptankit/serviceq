@@ -42,14 +42,16 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 			if len(cwork) < cap(cwork)-1 {
 				switch sqp.Proto {
 				case "http":
-					httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConnection(&conn))
-					go httpSrv.ExecuteRealTime(creq, cwork)
+					if httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConn(&conn)); httpSrv != nil {
+						go httpSrv.ExecuteRealTime(creq, cwork)
+					}
 				default:
 					conn.Close()
 				}
 			} else {
-				httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConnection(&conn))
-				go httpSrv.Discard()
+				if httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConn(&conn)); httpSrv != nil {
+					go httpSrv.Discard()
+				}
 			}
 		}
 	}
@@ -60,8 +62,9 @@ func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQPr
 
 	switch sqp.Proto {
 	case "http":
-		httpSrv := httpservice.New(sqp)
-		go httpSrv.ExecuteBuffered(creq, cwork)
+		if httpSrv := httpservice.New(sqp); httpSrv != nil {
+			go httpSrv.ExecuteBuffered(creq, cwork)
+		}
 	default:
 		break
 	}
