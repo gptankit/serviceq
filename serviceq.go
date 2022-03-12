@@ -10,13 +10,13 @@ import (
 )
 
 // main sets up serviceq properties, initializes work done and request buffers,
-// and starts routines to accept new tcp connections and observe buffered requests.
+// and starts routines to accept new tcp connections and observe buffered requests
 func main() {
 
 	if sqp, err := properties.New(properties.GetFilePath()); err == nil {
 
-		if listener, err := getListener(sqp); err == nil {
-			defer listener.Close()
+		if listener, err := newListener(sqp); err == nil {
+			defer (*listener).Close()
 
 			cwork := make(chan int, sqp.MaxConcurrency+1)      // work done queue
 			creq := make(chan interface{}, sqp.MaxConcurrency) // request queue
@@ -34,11 +34,11 @@ func main() {
 	}
 }
 
-// listenActive forwards new requests to the cluster.
-func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+// listenActive forwards new requests to the cluster
+func listenActive(listener *net.Listener, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	for {
-		if conn, err := listener.Accept(); err == nil {
+		if conn, err := (*listener).Accept(); err == nil {
 			if len(cwork) < cap(cwork)-1 {
 				switch sqp.Proto {
 				case "http":
@@ -57,7 +57,7 @@ func listenActive(listener net.Listener, creq chan interface{}, cwork chan int, 
 	}
 }
 
-// workBackground forwards buffered requests to the cluster.
+// workBackground forwards buffered requests to the cluster
 func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	switch sqp.Proto {
