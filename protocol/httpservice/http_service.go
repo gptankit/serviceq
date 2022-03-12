@@ -17,6 +17,8 @@ import (
 	"github.com/gptankit/serviceq/tcputils"
 )
 
+var _ model.NetService = &HTTPService{}
+
 // HTTPService is the core http flow handler
 type HTTPService struct {
 	inTCPConn     *net.Conn
@@ -51,6 +53,7 @@ func New(sqp *model.ServiceQProperties, httpSrvOptions ...HTTPServiceOption) *HT
 	return httpSrv
 }
 
+// WithIncomingTCPConn assigns a tcp conn and binds reader/writer to http service
 func WithIncomingTCPConn(tcpConn *net.Conn) HTTPServiceOption {
 
 	return func(httpSrv *HTTPService) error {
@@ -78,7 +81,7 @@ func NewNop(sqp *model.ServiceQProperties) *HTTPService {
 }
 
 // Read reads http request from reader
-func (httpSrv *HTTPService) Read() (*http.Request, error) {
+func (httpSrv *HTTPService) Read() (interface{}, error) {
 
 	req, err := http.ReadRequest(httpSrv.inTCPReader)
 
@@ -90,7 +93,12 @@ func (httpSrv *HTTPService) Read() (*http.Request, error) {
 }
 
 // Write writes http response to writer (in http format)
-func (httpSrv *HTTPService) Write(res model.ResponseParam) error {
+func (httpSrv *HTTPService) Write(resp interface{}) error {
+
+	res, ok := resp.(model.ResponseParam)
+	if !ok {
+		return errors.New("invalid-restype")
+	}
 
 	responseHeaders := ""
 
@@ -138,7 +146,11 @@ func (httpSrv *HTTPService) ExecuteRealTime(creq chan interface{}, cwork chan in
 		var toBuffer bool
 
 		// read from and write to conn
-		req, err := httpSrv.Read()
+		reqp, err := httpSrv.Read()
+		req, ok := reqp.(*http.Request)
+		if !ok {
+			break
+		}
 
 		if err == nil {
 			// add work
@@ -209,7 +221,11 @@ func (httpSrv *HTTPService) ExecuteBuffered(creq chan interface{}, cwork chan in
 func (httpSrv *HTTPService) Discard() {
 
 	var resParam model.ResponseParam
-	req, err := httpSrv.Read()
+	reqp, err := httpSrv.Read()
+	req, ok := reqp.(*http.Request)
+	if !ok {
+		return
+	}
 
 	if err == nil {
 		resParam = httpSrv.getCustomResponse(req.Proto, http.StatusTooManyRequests, "Request Discarded")
