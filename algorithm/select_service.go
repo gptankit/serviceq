@@ -63,7 +63,7 @@ func ChooseServiceIndex(sqp *model.ServiceQProperties, initialChoice int, retry 
 }
 
 // findCeilIn does a binary search to find position of selected random
-// number and returns corresponding ceil index in prefixes array.
+// number and returns corresponding ceil index in prefixes array
 func findCeilIn(randx int64, prefixes []float64, start int, end int) int {
 
 	var mid int

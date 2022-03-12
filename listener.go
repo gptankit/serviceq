@@ -11,8 +11,11 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-// getListener returns a new http(s) listener.
-func getListener(sqp *model.ServiceQProperties) (net.Listener, error) {
+// ListenerOption is used for extending default listener
+type ListenerOption func(*net.Listener) error
+
+// newListener returns a new http(s) listener
+func newListener(sqp *model.ServiceQProperties) (*net.Listener, error) {
 
 	transport := "tcp"
 	addr := ":" + sqp.ListenerPort
@@ -20,36 +23,36 @@ func getListener(sqp *model.ServiceQProperties) (net.Listener, error) {
 	key := sqp.SSLPrivateKeyFile
 
 	if !sqp.SSLEnabled {
-		return newListener(transport, addr)
+		return getListener(transport, addr)
 	}
 
 	if sqp.SSLAutoEnabled {
-		return newListener(transport, addr, applyTLSAuto(sqp.SSLAutoCertificateDir, sqp.SSLAutoEmail, sqp.SSLAutoDomains, sqp.SSLAutoRenewBefore))
+		return getListener(transport, addr, withTLSAuto(sqp.SSLAutoCertificateDir, sqp.SSLAutoEmail, sqp.SSLAutoDomains, sqp.SSLAutoRenewBefore))
 	} else {
-		return newListener(transport, addr, applyTLS(certificate, key))
+		return getListener(transport, addr, withTLS(certificate, key))
 	}
 }
 
-// newListener creates a new net.Listener object.
-func newListener(transport string, addr string, options ...func(*net.Listener) error) (net.Listener, error) {
+// getListener creates a new net.Listener object
+func getListener(transport string, addr string, listenerOptions ...ListenerOption) (*net.Listener, error) {
 
 	listener, err := net.Listen(transport, addr)
 	if err != nil {
-		return listener, err
+		return &listener, err
 	}
 
-	for _, option := range options {
-		err = option(&listener)
+	for _, listenerOption := range listenerOptions {
+		err = listenerOption(&listener)
 		if err != nil {
-			return listener, err // further options won't be executed
+			return &listener, err // further options won't be executed
 		}
 	}
 
-	return listener, nil
+	return &listener, nil
 }
 
-// applyTLS upgrades non-TLS listener to TLS listener with user-provided ssl certificate and key.
-func applyTLS(certificate string, key string) func(*net.Listener) error {
+// withTLS upgrades non-TLS listener to TLS listener with user-provided ssl certificate and key
+func withTLS(certificate string, key string) ListenerOption {
 
 	return func(l *net.Listener) error {
 
@@ -74,8 +77,8 @@ func applyTLS(certificate string, key string) func(*net.Listener) error {
 	}
 }
 
-// applyTLSAuto upgrades non-TLS listener to TLS listener with automatic ssl management.
-func applyTLSAuto(certDir string, email string, domains string, renewBefore int32) func(*net.Listener) error {
+// withTLSAuto upgrades non-TLS listener to TLS listener with automatic ssl management
+func withTLSAuto(certDir string, email string, domains string, renewBefore int32) ListenerOption {
 
 	return func(l *net.Listener) error {
 
