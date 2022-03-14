@@ -3,6 +3,7 @@ package httpservice
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"io/ioutil"
 	"net"
@@ -135,7 +136,7 @@ func (httpSrv *HTTPService) Write(resp interface{}) error {
 // ExecuteRealTime reads from incoming http connection and attempts to forward it to upstream nodes by calling
 // dialAndSend(). It temporarily saves the request before forwarding, if needed for subsequent retries. This saved
 // request can be buffered if dialAndSend() is unable to forward to any upstream nodes.
-func (httpSrv *HTTPService) ExecuteRealTime(creq chan interface{}, cwork chan int) {
+func (httpSrv *HTTPService) ExecuteRealTime(ctx context.Context, creq chan interface{}, cwork chan int) {
 
 	tcputils.SetTCPDeadline(httpSrv.inTCPConn, httpSrv.properties.KeepAliveTimeout)
 
@@ -159,7 +160,7 @@ func (httpSrv *HTTPService) ExecuteRealTime(creq chan interface{}, cwork chan in
 			reqParam = httpSrv.saveReqParam(req)
 			toBuffer = httpSrv.properties.EnableUpfrontQ && httpSrv.canBeBuffered(reqParam)
 			if !toBuffer {
-				resParam, toBuffer, err = httpSrv.dialAndSend(reqParam)
+				resParam, toBuffer, err = httpSrv.dialAndSend(ctx, reqParam)
 				if err == nil {
 					err = httpSrv.Write(resParam)
 					if err != nil {
@@ -192,14 +193,14 @@ func (httpSrv *HTTPService) ExecuteRealTime(creq chan interface{}, cwork chan in
 }
 
 // ExecuteBuffered retries buffered requests by calling dialAndSend()
-func (httpSrv *HTTPService) ExecuteBuffered(creq chan interface{}, cwork chan int) {
+func (httpSrv *HTTPService) ExecuteBuffered(ctx context.Context, creq chan interface{}, cwork chan int) {
 
 	for {
 		if len(cwork) > 0 && len(creq) > 0 {
 
 			reqParam := (<-creq).(model.RequestParam)
 			// send from buffer
-			_, toBuffer, _ := httpSrv.dialAndSend(reqParam)
+			_, toBuffer, _ := httpSrv.dialAndSend(ctx, reqParam)
 
 			// to buffer?
 			if toBuffer {
@@ -218,7 +219,7 @@ func (httpSrv *HTTPService) ExecuteBuffered(creq chan interface{}, cwork chan in
 }
 
 // Discard sets error response and discards client http connection
-func (httpSrv *HTTPService) Discard() {
+func (httpSrv *HTTPService) Discard(ctx context.Context) {
 
 	var resParam model.ResponseParam
 	reqp, err := httpSrv.Read()
@@ -275,7 +276,7 @@ func (httpSrv *HTTPService) saveReqParam(req *http.Request) model.RequestParam {
 // dialAndSend forwards request to upstream node selected by ChooseServiceIndex() and in case of
 // error, increments the error count, and retries for a maximum MaxRetries times. If the request succeedes,
 // the coresponding node error count is reset. If the request fails on all nodes, it can be set to buffer.
-func (httpSrv *HTTPService) dialAndSend(reqParam model.RequestParam) (model.ResponseParam, bool, error) {
+func (httpSrv *HTTPService) dialAndSend(ctx context.Context, reqParam model.RequestParam) (model.ResponseParam, bool, error) {
 
 	choice := -1
 	var nodeErr error
@@ -286,7 +287,7 @@ func (httpSrv *HTTPService) dialAndSend(reqParam model.RequestParam) (model.Resp
 		upstrService := httpSrv.properties.ServiceList[choice]
 
 		body := ioutil.NopCloser(bytes.NewReader(reqParam.BodyBuff))
-		upstrReq, _ := http.NewRequest(reqParam.Method, upstrService.QualifiedUrl+reqParam.RequestURI, body)
+		upstrReq, _ := http.NewRequestWithContext(ctx, reqParam.Method, upstrService.QualifiedUrl+reqParam.RequestURI, body)
 		upstrReq.Header = reqParam.Headers
 
 		resp, err := httpSrv.outHTTPClient.Do(upstrReq)
