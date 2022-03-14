@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gptankit/serviceq/errorlog"
 	"github.com/gptankit/serviceq/model"
@@ -13,19 +17,23 @@ import (
 // and starts routines to accept new tcp connections and observe buffered requests
 func main() {
 
+	ctx := context.Background()
+	stopCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	if sqp, err := properties.New(properties.GetFilePath()); err == nil {
 
-		if listener, err := newListener(sqp); err == nil {
-			defer (*listener).Close()
+		if ln, err := newListener(sqp); err == nil {
+			defer closeListener(ln)
 
 			cwork := make(chan int, sqp.MaxConcurrency+1)      // work done queue
 			creq := make(chan interface{}, sqp.MaxConcurrency) // request queue
 
 			// observe buffered requests
-			go workBackground(creq, cwork, sqp)
+			go workBackground(stopCtx, creq, cwork, sqp)
 
 			// accept new connections
-			listenActive(listener, creq, cwork, sqp)
+			listenActive(stopCtx, ln, creq, cwork, sqp)
 		} else {
 			go errorlog.LogGenericError("Could not listen on :" + sqp.ListenerPort + " -- " + err.Error())
 		}
@@ -35,35 +43,46 @@ func main() {
 }
 
 // listenActive forwards new requests to the cluster
-func listenActive(listener *net.Listener, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+func listenActive(ctx context.Context, ln *net.Listener, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+
+	shutListener := func(ln *net.Listener) {
+		<-ctx.Done()
+		closeListener(ln)
+	}
+	go shutListener(ln)
 
 	for {
-		if conn, err := (*listener).Accept(); err == nil {
+		if conn, err := (*ln).Accept(); err == nil {
 			if len(cwork) < cap(cwork)-1 {
 				switch sqp.Proto {
 				case "http":
 					if httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConn(&conn)); httpSrv != nil {
-						go httpSrv.ExecuteRealTime(creq, cwork)
+						go httpSrv.ExecuteRealTime(ctx, creq, cwork)
 					}
 				default:
 					conn.Close()
 				}
 			} else {
 				if httpSrv := httpservice.New(sqp, httpservice.WithIncomingTCPConn(&conn)); httpSrv != nil {
-					go httpSrv.Discard()
+					go httpSrv.Discard(ctx)
 				}
+			}
+		} else {
+			// handle permanent accept error including closed listener
+			if ae, ok := err.(net.Error); ok && !ae.Temporary() {
+				break
 			}
 		}
 	}
 }
 
 // workBackground forwards buffered requests to the cluster
-func workBackground(creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
+func workBackground(ctx context.Context, creq chan interface{}, cwork chan int, sqp *model.ServiceQProperties) {
 
 	switch sqp.Proto {
 	case "http":
 		if httpSrv := httpservice.New(sqp); httpSrv != nil {
-			go httpSrv.ExecuteBuffered(creq, cwork)
+			go httpSrv.ExecuteBuffered(ctx, creq, cwork)
 		}
 	default:
 		break

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 )
 
 func TestWorkAssigment(t *testing.T) {
+
+	ctx := context.Background()
 
 	// assumption -- all services are down
 
@@ -45,7 +48,7 @@ func TestWorkAssigment(t *testing.T) {
 	cr <- reqParam
 	cw <- 1
 
-	go workBackground(cr, cw, &sqp) // this will start executing req
+	go workBackground(ctx, cr, cw, &sqp) // this will start executing req
 
 	// increment/decrement buffer (+1/-1) in creq, cwork and give time to orchestrate
 

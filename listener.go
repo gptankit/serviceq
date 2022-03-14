@@ -33,28 +33,28 @@ func newListener(sqp *model.ServiceQProperties) (*net.Listener, error) {
 	}
 }
 
-// getListener creates a new net.Listener object
+// getListener creates a new listener with applicable options
 func getListener(transport string, addr string, listenerOptions ...ListenerOption) (*net.Listener, error) {
 
-	listener, err := net.Listen(transport, addr)
+	ln, err := net.Listen(transport, addr)
 	if err != nil {
-		return &listener, err
+		return &ln, err
 	}
 
 	for _, listenerOption := range listenerOptions {
-		err = listenerOption(&listener)
+		err = listenerOption(&ln)
 		if err != nil {
-			return &listener, err // further options won't be executed
+			return &ln, err // further options won't be executed
 		}
 	}
 
-	return &listener, nil
+	return &ln, nil
 }
 
 // withTLS upgrades non-TLS listener to TLS listener with user-provided ssl certificate and key
 func withTLS(certificate string, key string) ListenerOption {
 
-	return func(l *net.Listener) error {
+	return func(ln *net.Listener) error {
 
 		cert, err := tls.LoadX509KeyPair(certificate, key)
 		if err != nil {
@@ -72,7 +72,7 @@ func withTLS(certificate string, key string) ListenerOption {
 		tlsConfig.BuildNameToCertificate()
 		tlsConfig.PreferServerCipherSuites = true
 
-		*l = tls.NewListener(*l, tlsConfig)
+		*ln = tls.NewListener(*ln, tlsConfig)
 		return nil
 	}
 }
@@ -80,7 +80,7 @@ func withTLS(certificate string, key string) ListenerOption {
 // withTLSAuto upgrades non-TLS listener to TLS listener with automatic ssl management
 func withTLSAuto(certDir string, email string, domains string, renewBefore int32) ListenerOption {
 
-	return func(l *net.Listener) error {
+	return func(ln *net.Listener) error {
 
 		certManager := autocert.Manager{
 			Prompt:      autocert.AcceptTOS,
@@ -99,7 +99,13 @@ func withTLSAuto(certDir string, email string, domains string, renewBefore int32
 			Rand:           rand.Reader,
 		}
 		tlsConfig.PreferServerCipherSuites = true
-		*l = tls.NewListener(*l, tlsConfig)
+		*ln = tls.NewListener(*ln, tlsConfig)
 		return nil
 	}
+}
+
+func closeListener(ln *net.Listener) error {
+
+	(*ln).Close()
+	return nil
 }
