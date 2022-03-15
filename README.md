@@ -1,6 +1,6 @@
 # ServiceQ [![Build Status](https://travis-ci.com/gptankit/serviceq.svg?branch=master)](https://travis-ci.com/gptankit/serviceq) [![GoDoc](https://godoc.org/github.com/gptankit/serviceq?status.svg)](https://pkg.go.dev/github.com/gptankit/serviceq?tab=subdirectories)
 
-ServiceQ is a fault-tolerant gateway for HTTP clusters. It employs probabilistic routing to distribute load during partial cluster shutdown (k/n nodes experiencing downtimes, timeouts, connection loss etc) and buffers requests during total cluster shutdown (n nodes down). The buffered requests are forwarded in FIFO order when the cluster is available next.
+ServiceQ is a fault-tolerant gateway for HTTP clusters. It employs probabilistic routing to distribute load during partial cluster shutdown (k/n nodes experiencing downtimes, timeouts, connection loss etc) and queues requests during total cluster shutdown (n nodes down). The queued requests are forwarded in FIFO order when the cluster is available next.
 
 Below graph shows the routing probability (P) on a down node (D) in a 8-node cluster with respect to number of requests (r). Notice how quickly the routing probability on D reduces as the requests on D start to fail. Depending on the rate of request, it will only take a few seconds (sometime even milliseconds) to move all requests away from D, thus ensuring more requests are routed to healthier nodes.
 
@@ -8,14 +8,14 @@ Below graph shows the routing probability (P) on a down node (D) in a 8-node clu
 <img src="https://github.com/gptankit/illustrations/blob/master/serviceq/prob-8.png?raw=true" style="width:50%"/> 
 </p>
 
-Note that, even when requests keep failing on D (however less), ServiceQ retries them on other nodes until they succeed. If they do not succeed on any of the nodes, they are buffered and periodically retried on the cluster (using the same approach above), until they succeed.
+Note that, even when requests keep failing on D (however less), ServiceQ retries them on other nodes until they succeed. If they do not succeed on any of the nodes, they are queued and periodically retried on the cluster (using the same approach above), until they succeed.
 
 <b>Noticeable features</b>
 
 * HTTP Load Balancing<br/>
 * Probabilistic node selection based on error feedback<br/>
-* Failed request buffering and deferred forwarding<br/>
-* Upfront request buffering<br/>
+* Failed request queueing and deferred forwarding<br/>
+* Upfront request queueing<br/>
 * Request retries<br/>
 * Concurrent connections limit<br/>
 * Complete TLS/SSL support (automatic and manual)
@@ -24,11 +24,10 @@ Here are the steps to run ServiceQ - </br>
 
 <b>Download</b>
 
-Clone the project into any directory in your workspace (say '<i>serviceq</i>')<br/>
+Clone the project into any directory in your workspace <br/>
 
 <pre>
-$ mkdir serviceq
-$ git clone https://github.com/gptankit/serviceq serviceq/
+$ git clone https://github.com/gptankit/serviceq
 </pre>
 
 Change into directory <i>serviceq</i><br/>
@@ -49,11 +48,11 @@ Make sure the current user has root privileges, then - </br>
 
 <pre>$ make install</pre>
 
-This will create a folder <i>serviceq</i> in <i>/usr/local</i> directory and copy the <i>serviceq</i> binary to <i>/usr/local/serviceq</i> and <i>sq.properties</i> file (serviceq configuration) to <i>/usr/local/serviceq/config</i>.<br/>
+This will create a folder <i>serviceq</i> in <i>/usr/local</i> directory and copy the <i>serviceq</i> binary (generated in the build step) to <i>/usr/local/serviceq</i> and <i>sq.properties</i> (serviceq configuration file) to <i>/usr/local/serviceq/config</i>.<br/>
 
 <b>How to Run</b>
 
-Before running, make sure the mandatory configurations in <i>/usr/local/serviceq/config/sq.properties</i> are set (<b>LISTENER_PORT</b>, <b>PROTO</b>, <b>ENDPOINTS</b>, <b>CONCURRENCY_PEAK</b>) -</br>
+Before running, make sure the mandatory configurations in <i>/usr/local/serviceq/config/sq.properties</i> are set (<b>LISTENER_PORT</b>, <b>PROTO</b>, <b>ENDPOINTS</b>, <b>CONCURRENCY_PEAK</b>). The configuration file closely resembles a typical <b>INI</b> file so its fairly easy to understand and make changes -</br>
 
 <pre>
 #sq.properties
